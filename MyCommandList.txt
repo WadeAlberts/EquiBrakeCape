@@ -29,3 +29,7 @@ Command to push everything to my GitHub Repo:
 git add .
 git commit -m "Enter a comment here on what you last did"
 git push origin main
+
+
+Command to PULL everything from the GitHub repo:
+git pull origin main
