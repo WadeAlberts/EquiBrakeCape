@@ -263,4 +263,163 @@ def get_all_products():
     Returns all products. Supports optional category filter.
     Example: /api/products?category=Brake Pads
     """
-    category =
+    category = request.args.get('category', '').strip()
+    conn = get_db_connection()
+
+    if category:
+        products = conn.execute(
+            'SELECT * FROM products WHERE category = ? ORDER BY part_number',
+            (category,)
+        ).fetchall()
+    else:
+        products = conn.execute(
+            'SELECT * FROM products ORDER BY part_number'
+        ).fetchall()
+
+    conn.close()
+    return jsonify([dict(row) for row in products]), 200
+
+
+@app.route('/api/products/<part_number>', methods=['GET'])
+def get_product(part_number):
+    """
+    GET /api/products/DP21074
+    Returns a single product by part number.
+    Also includes all vehicles it fits.
+    """
+    conn = get_db_connection()
+
+    product = conn.execute(
+        'SELECT * FROM products WHERE part_number = ?', (part_number,)
+    ).fetchone()
+
+    if product is None:
+        conn.close()
+        return jsonify({'error': f'Product {part_number} not found'}), 404
+
+    # Also get all vehicles this part fits
+    fitments = conn.execute(
+        '''SELECT v.make, v.model, v.sub_model, v.year, v.engine, vf.position
+           FROM vehicle_fitment vf
+           JOIN vehicles v ON vf.vehicle_id = v.id
+           WHERE vf.part_number = ?
+           ORDER BY v.make, v.model, v.year''',
+        (part_number,)
+    ).fetchall()
+
+    conn.close()
+
+    result = dict(product)
+    result['fits'] = [dict(row) for row in fitments]
+    return jsonify(result), 200
+
+
+@app.route('/api/products', methods=['POST'])
+def add_product():
+    """
+    POST /api/products
+    Manually adds a single product.
+    Required fields: part_number, category
+    """
+    data = request.get_json()
+    if 'part_number' not in data:
+        return jsonify({'error': 'part_number is required'}), 400
+
+    conn = get_db_connection()
+    try:
+        conn.execute('''
+            INSERT INTO products (part_number, category, srp_excl_vat, srp_incl_vat,
+                                  dealer1_price, dealer2_price, dealer3_price)
+            VALUES (:part_number, :category, :srp_excl_vat, :srp_incl_vat,
+                    :dealer1_price, :dealer2_price, :dealer3_price)
+        ''', {
+            'part_number'  : data.get('part_number'),
+            'category'     : data.get('category', 'Other'),
+            'srp_excl_vat' : data.get('srp_excl_vat'),
+            'srp_incl_vat' : data.get('srp_incl_vat'),
+            'dealer1_price': data.get('dealer1_price'),
+            'dealer2_price': data.get('dealer2_price'),
+            'dealer3_price': data.get('dealer3_price'),
+        })
+        conn.commit()
+        conn.close()
+        return jsonify({'message': f"Product {data['part_number']} added!"}), 201
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({'error': f"Part number already exists"}), 409
+
+
+@app.route('/api/products/<part_number>', methods=['PATCH'])
+def update_product(part_number):
+    """
+    PATCH /api/products/DP21074
+    Updates one or more fields on an existing product.
+    Only send the fields you want to change.
+    """
+    conn = get_db_connection()
+    existing = conn.execute(
+        'SELECT * FROM products WHERE part_number = ?', (part_number,)
+    ).fetchone()
+
+    if existing is None:
+        conn.close()
+        return jsonify({'error': f'Product {part_number} not found'}), 404
+
+    data = request.get_json()
+    allowed = ['category', 'description', 'srp_excl_vat', 'srp_incl_vat',
+               'dealer1_price', 'dealer2_price', 'dealer3_price']
+
+    updates = []
+    values  = []
+    for field in allowed:
+        if field in data:
+            updates.append(f'{field} = ?')
+            values.append(data[field])
+
+    if not updates:
+        conn.close()
+        return jsonify({'error': 'No valid fields to update'}), 400
+
+    values.append(part_number)
+    conn.execute(f"UPDATE products SET {', '.join(updates)} WHERE part_number = ?", values)
+    conn.commit()
+    conn.close()
+    return jsonify({'message': f'Product {part_number} updated!'}), 200
+
+
+@app.route('/api/products/<part_number>', methods=['DELETE'])
+def delete_product(part_number):
+    """
+    DELETE /api/products/DP21074
+    Permanently removes a product.
+    """
+    conn = get_db_connection()
+    existing = conn.execute(
+        'SELECT * FROM products WHERE part_number = ?', (part_number,)
+    ).fetchone()
+
+    if existing is None:
+        conn.close()
+        return jsonify({'error': f'Product {part_number} not found'}), 404
+
+    conn.execute('DELETE FROM products WHERE part_number = ?', (part_number,))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': f'Product {part_number} deleted!'}), 200
+
+
+# ==============================================================================
+# START SERVER
+# ==============================================================================
+
+if __name__ == '__main__':
+    if not os.path.exists(DATABASE):
+        print("⚠️  Database not found! Run: python3 database.py")
+    else:
+        print("✅ Database found!")
+        print("🚀 Starting Equi Brake Cape server...")
+        print("🌐 Store:  http://localhost:5000")
+        print("📦 API:    http://localhost:5000/api/products")
+        print("⛔ Stop:   CTRL + C\n")
+
+    app.run(debug=True, port=5000)
