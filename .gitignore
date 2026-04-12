@@ -1,0 +1,13 @@
+# The database file stays local - never upload it to GitHub
+products.db
+
+# Python auto-generated cache files - not needed
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code settings folder
+.vscode/
+
+# Mac system file
+.DS_Store
