@@ -11,3 +11,10 @@ __pycache__/
 
 # Mac system file
 .DS_Store
+
+# Database
+products.db
+
+# Excel source files - keep these local only
+*.xlsx
+*.xls
