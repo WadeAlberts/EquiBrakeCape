@@ -33,3 +33,16 @@ git push origin main
 
 Command to PULL everything from the GitHub repo:
 git pull origin main
+
+
+Rebuild Database
+python3 database.py
+
+Re-Import Prices
+python3 import_prices.py
+
+RE-import Catalogue
+python3 import_catalogue.py
+
+Second server to catch emails:
+python3 -m smtpd -n -c DebuggingServer localhost:1025
