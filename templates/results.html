@@ -4,12 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Results for {{ make }} {{ model }} | Equi Brake Cape</title>
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-
     <style>
-        /* Same CSS variables as index.html for consistent theming */
         :root {
             --orange      : #FF6200;
             --orange-dark : #CC4E00;
@@ -19,309 +16,137 @@
             --white       : #FFFFFF;
             --grey-light  : #AAAAAA;
             --grey-mid    : #555555;
+            --green       : #22c55e;
             --font-head   : 'Barlow Condensed', sans-serif;
             --font-body   : 'DM Sans', sans-serif;
         }
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--black); color: var(--white); font-family: var(--font-body); }
+        a    { color: var(--orange); text-decoration: none; }
 
-        body {
-            background  : var(--black);
-            color       : var(--white);
-            font-family : var(--font-body);
-            font-size   : 16px;
-            line-height : 1.6;
-        }
-
-        /* ---- Navigation (same as index) ---- */
+        /* ---- Navigation ---- */
         nav {
-            position        : fixed;
-            top             : 0; left: 0; right: 0;
-            z-index         : 1000;
-            display         : flex;
-            align-items     : center;
-            justify-content : space-between;
-            padding         : 0 40px;
-            height          : 70px;
-            background      : rgba(13,13,13,0.95);
-            border-bottom   : 1px solid var(--black-border);
-            backdrop-filter : blur(10px);
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 40px; height: 70px;
+            background: rgba(13,13,13,0.95);
+            border-bottom: 1px solid var(--black-border);
+            backdrop-filter: blur(10px);
         }
-
         .nav-logo { display: flex; align-items: center; gap: 12px; }
-
         .nav-logo-mark {
-            width       : 38px; height: 38px;
-            background  : var(--orange);
-            display     : flex; align-items: center; justify-content: center;
-            font-family : var(--font-head);
-            font-weight : 800; font-size: 18px;
-            color       : var(--black);
+            width: 38px; height: 38px; background: var(--orange);
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-head); font-weight: 800; font-size: 18px; color: var(--black);
         }
+        .nav-logo-text { font-family: var(--font-head); font-weight: 700; font-size: 20px; letter-spacing: 1px; line-height: 1.1; }
+        .nav-logo-text span { display: block; font-size: 11px; font-weight: 400; color: var(--grey-light); letter-spacing: 3px; text-transform: uppercase; }
 
-        .nav-logo-text {
-            font-family    : var(--font-head);
-            font-weight    : 700; font-size: 20px;
-            letter-spacing : 1px; line-height: 1.1;
+        /* Cart icon in nav */
+        .nav-cart {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--black-card); border: 1px solid var(--black-border);
+            padding: 10px 20px; color: var(--white) !important;
+            font-size: 14px; font-weight: 500; transition: border-color 0.2s;
         }
-
-        .nav-logo-text span {
-            display        : block; font-size: 11px;
-            font-weight    : 400; color: var(--grey-light);
-            letter-spacing : 3px; text-transform: uppercase;
+        .nav-cart:hover { border-color: var(--orange); }
+        .cart-badge {
+            background: var(--orange); color: var(--black);
+            font-size: 11px; font-weight: 700; font-family: var(--font-head);
+            padding: 2px 7px; min-width: 20px; text-align: center;
         }
 
         /* ---- Page header ---- */
-        .page-header {
-            padding    : 100px 40px 40px;
-            max-width  : 1200px;
-            margin     : 0 auto;
-        }
-
-        .breadcrumb {
-            font-size      : 13px;
-            color          : var(--grey-light);
-            margin-bottom  : 16px;
-        }
-
+        .page-header { padding: 100px 40px 40px; max-width: 1200px; margin: 0 auto; }
+        .breadcrumb { font-size: 13px; color: var(--grey-light); margin-bottom: 16px; }
         .breadcrumb a { color: var(--orange); }
-
-        .page-title {
-            font-family    : var(--font-head);
-            font-size      : clamp(32px, 5vw, 60px);
-            font-weight    : 800;
-            text-transform : uppercase;
-            line-height    : 0.95;
-        }
-
-        .page-title em {
-            font-style : normal;
-            color      : var(--orange);
-        }
-
-        .result-meta {
-            margin-top : 16px;
-            font-size  : 15px;
-            color      : var(--grey-light);
-        }
-
-        .result-meta strong {
-            color : var(--white);
-        }
+        .page-title { font-family: var(--font-head); font-size: clamp(32px, 5vw, 60px); font-weight: 800; text-transform: uppercase; line-height: 0.95; }
+        .page-title em { font-style: normal; color: var(--orange); }
+        .result-meta { margin-top: 16px; font-size: 15px; color: var(--grey-light); }
+        .result-meta strong { color: var(--white); }
 
         /* ---- Search again bar ---- */
         .search-again {
-            background   : var(--black-card);
-            border-top   : 1px solid var(--black-border);
+            background: var(--black-card); border-top: 1px solid var(--black-border);
             border-bottom: 1px solid var(--black-border);
-            padding      : 20px 40px;
-            display      : flex;
-            align-items  : center;
-            gap          : 16px;
-            flex-wrap    : wrap;
+            padding: 20px 40px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
         }
-
-        .search-again span {
-            font-size : 14px;
-            color     : var(--grey-light);
-        }
-
+        .search-again span { font-size: 14px; color: var(--grey-light); }
         .btn-back {
-            background  : transparent;
-            border      : 1px solid var(--orange);
-            color       : var(--orange);
-            padding     : 10px 20px;
-            font-family : var(--font-head);
-            font-size   : 14px;
-            font-weight : 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            cursor      : pointer;
-            text-decoration: none;
-            transition  : background 0.2s, color 0.2s;
+            background: transparent; border: 1px solid var(--orange); color: var(--orange);
+            padding: 10px 20px; font-family: var(--font-head); font-size: 14px;
+            font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+            cursor: pointer; text-decoration: none; transition: background 0.2s, color 0.2s;
         }
+        .btn-back:hover { background: var(--orange); color: var(--black); }
 
-        .btn-back:hover {
-            background : var(--orange);
-            color      : var(--black);
-        }
-
-        /* ---- Results content ---- */
-        .results-content {
-            max-width : 1200px;
-            margin    : 0 auto;
-            padding   : 48px 40px 80px;
-        }
-
-        /* ---- Category section ---- */
-        .category-section {
-            margin-bottom : 48px;
-        }
-
+        /* ---- Results ---- */
+        .results-content { max-width: 1200px; margin: 0 auto; padding: 48px 40px 80px; }
+        .category-section { margin-bottom: 48px; }
         .category-heading {
-            display         : flex;
-            align-items     : center;
-            gap             : 16px;
-            margin-bottom   : 20px;
-            padding-bottom  : 12px;
-            border-bottom   : 1px solid var(--black-border);
+            display: flex; align-items: center; gap: 16px;
+            margin-bottom: 20px; padding-bottom: 12px;
+            border-bottom: 1px solid var(--black-border);
         }
-
-        .category-heading h2 {
-            font-family    : var(--font-head);
-            font-size      : 28px;
-            font-weight    : 800;
-            text-transform : uppercase;
-            letter-spacing : 1px;
-        }
-
-        .category-badge {
-            background  : var(--orange);
-            color       : var(--black);
-            font-size   : 12px;
-            font-weight : 700;
-            padding     : 4px 10px;
-            font-family : var(--font-head);
-            letter-spacing: 1px;
-        }
-
-        /* ---- Parts grid ---- */
-        .parts-grid {
-            display               : grid;
-            grid-template-columns : repeat(auto-fill, minmax(280px, 1fr));
-            gap                   : 16px;
-        }
+        .category-heading h2 { font-family: var(--font-head); font-size: 28px; font-weight: 800; text-transform: uppercase; }
+        .category-badge { background: var(--orange); color: var(--black); font-size: 12px; font-weight: 700; padding: 4px 10px; font-family: var(--font-head); }
+        .parts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 
         /* ---- Part card ---- */
         .part-card {
-            background : var(--black-card);
-            border     : 1px solid var(--black-border);
-            padding    : 24px;
-            transition : border-color 0.2s, transform 0.2s;
-            position   : relative;
+            background: var(--black-card); border: 1px solid var(--black-border);
+            padding: 24px; transition: border-color 0.2s, transform 0.2s; position: relative;
+            display: flex; flex-direction: column;
         }
-
-        .part-card:hover {
-            border-color : var(--orange);
-            transform    : translateY(-2px);
-        }
-
-        /* Position badge (Front / Rear) */
+        .part-card:hover { border-color: var(--orange); transform: translateY(-2px); }
         .position-badge {
-            position    : absolute;
-            top         : 12px;
-            right       : 12px;
-            font-size   : 10px;
-            font-weight : 700;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            padding     : 3px 8px;
-            border      : 1px solid var(--black-border);
-            color       : var(--grey-light);
+            position: absolute; top: 12px; right: 12px;
+            font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+            padding: 3px 8px; border: 1px solid var(--black-border); color: var(--grey-light);
         }
-
         .position-badge.front { border-color: var(--orange); color: var(--orange); }
+        .part-number { font-family: var(--font-head); font-size: 24px; font-weight: 800; letter-spacing: 1px; margin-bottom: 4px; }
+        .part-type { font-size: 13px; color: var(--grey-light); margin-bottom: 16px; line-height: 1.4; flex-grow: 1; }
+        .part-price { display: flex; align-items: baseline; gap: 8px; margin-top: auto; }
+        .price-main { font-family: var(--font-head); font-size: 28px; font-weight: 800; color: var(--orange); }
+        .price-label { font-size: 12px; color: var(--grey-mid); }
+        .price-excl { font-size: 12px; color: var(--grey-light); margin-top: 4px; }
+        .no-price { font-size: 14px; color: var(--grey-mid); font-style: italic; margin-top: 12px; }
 
-        .part-number {
-            font-family    : var(--font-head);
-            font-size      : 24px;
-            font-weight    : 800;
-            color          : var(--white);
-            letter-spacing : 1px;
-            margin-bottom  : 4px;
-        }
-
-        .part-type {
-            font-size  : 13px;
-            color      : var(--grey-light);
-            margin-bottom: 16px;
-            line-height: 1.4;
-        }
-
-        /* Price display */
-        .part-price {
-            display     : flex;
-            align-items : baseline;
-            gap         : 8px;
-            margin-top  : auto;
-        }
-
-        .price-main {
-            font-family : var(--font-head);
-            font-size   : 28px;
-            font-weight : 800;
-            color       : var(--orange);
-        }
-
-        .price-label {
-            font-size : 12px;
-            color     : var(--grey-mid);
-        }
-
-        .price-excl {
-            font-size  : 12px;
-            color      : var(--grey-light);
-            margin-top : 4px;
-        }
-
-        /* Add to cart button - placeholder for now */
+        /* Add to cart button */
         .btn-add-cart {
-            width          : 100%;
-            padding        : 12px;
-            background     : var(--orange);
-            color          : var(--black);
-            border         : none;
-            font-family    : var(--font-head);
-            font-size      : 15px;
-            font-weight    : 700;
-            letter-spacing : 1px;
-            text-transform : uppercase;
-            cursor         : pointer;
-            margin-top     : 16px;
-            transition     : background 0.2s;
+            width: 100%; padding: 12px; background: var(--orange); color: var(--black);
+            border: none; font-family: var(--font-head); font-size: 15px; font-weight: 700;
+            letter-spacing: 1px; text-transform: uppercase; cursor: pointer; margin-top: 16px;
+            transition: background 0.2s;
         }
-
         .btn-add-cart:hover { background: var(--orange-dark); }
 
-        /* No price state */
-        .no-price {
-            font-size  : 14px;
-            color      : var(--grey-mid);
-            font-style : italic;
-            margin-top : 12px;
+        /* Added confirmation state */
+        .btn-add-cart.added {
+            background: var(--green); color: var(--white); pointer-events: none;
         }
 
-        /* ---- No results message ---- */
-        .no-results {
-            text-align : center;
-            padding    : 80px 40px;
-        }
+        /* ---- No results ---- */
+        .no-results { text-align: center; padding: 80px 40px; }
+        .no-results h2 { font-family: var(--font-head); font-size: 36px; text-transform: uppercase; margin-bottom: 16px; }
+        .no-results p { color: var(--grey-light); max-width: 400px; margin: 0 auto 32px; }
 
-        .no-results h2 {
-            font-family    : var(--font-head);
-            font-size      : 36px;
-            text-transform : uppercase;
-            margin-bottom  : 16px;
+        /* Toast notification */
+        .toast {
+            position: fixed; bottom: 32px; right: 32px; z-index: 9999;
+            background: var(--black-card); border: 1px solid var(--green);
+            padding: 16px 24px; font-size: 14px; color: var(--white);
+            transform: translateY(100px); opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
         }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast strong { color: var(--green); }
 
-        .no-results p {
-            color     : var(--grey-light);
-            max-width : 400px;
-            margin    : 0 auto 32px;
-        }
-
-        /* ---- Footer ---- */
-        footer {
-            background  : var(--black-card);
-            border-top  : 1px solid var(--black-border);
-            padding     : 32px 40px;
-            text-align  : center;
-            font-size   : 13px;
-            color       : var(--grey-mid);
-        }
+        footer { background: var(--black-card); border-top: 1px solid var(--black-border); padding: 32px 40px; text-align: center; font-size: 13px; color: var(--grey-mid); }
 
         @media (max-width: 768px) {
-            .page-header  { padding: 90px 20px 32px; }
+            .page-header { padding: 90px 20px 32px; }
             .search-again { padding: 16px 20px; }
             .results-content { padding: 32px 20px 60px; }
             nav { padding: 0 20px; }
@@ -339,21 +164,20 @@
                 <span>Authorized EBC Reseller</span>
             </div>
         </div>
+        <a href="/cart" class="nav-cart">
+            🛒 Cart
+            <span class="cart-badge" id="nav-cart-count">{{ cart_count }}</span>
+        </a>
     </nav>
 
     <!-- Page Header -->
     <div class="page-header">
-        <p class="breadcrumb">
-            <a href="/">← Back to Home</a> &nbsp;/&nbsp; Parts Finder Results
-        </p>
-
+        <p class="breadcrumb"><a href="/">← Back to Home</a> &nbsp;/&nbsp; Parts Finder Results</p>
         <h1 class="page-title">
             <em>{{ make }} {{ model }}</em><br>
             Brake Components
         </h1>
-
         <p class="result-meta">
-            <!-- These variables are passed in from app.py -->
             Showing results for:
             <strong>{{ make }} {{ model }}</strong>
             {% if year %}· <strong>{{ year }}</strong>{% endif %}
@@ -363,89 +187,120 @@
         </p>
     </div>
 
-    <!-- Search Again Bar -->
+    <!-- Search Again -->
     <div class="search-again">
         <span>Not what you were looking for?</span>
         <a href="/" class="btn-back">← Search Again</a>
+        {% if cart_count > 0 %}
+            <a href="/cart" class="btn-back" style="border-color: var(--green); color: var(--green);">
+                View Cart ({{ cart_count }}) →
+            </a>
+        {% endif %}
     </div>
 
     <!-- Results -->
     <div class="results-content">
-
-        <!-- If no results were found -->
         {% if total_results == 0 %}
             <div class="no-results">
                 <h2>No Parts Found</h2>
-                <p>
-                    We couldn't find any EBC parts for
-                    <strong>{{ make }} {{ model }}
-                    {% if year %}{{ year }}{% endif %}
-                    {% if engine %}{{ engine }}{% endif %}</strong>.
-                    Try searching with fewer filters.
-                </p>
+                <p>We couldn't find any EBC parts for <strong>{{ make }} {{ model }}{% if year %} {{ year }}{% endif %}{% if engine %} {{ engine }}{% endif %}</strong>. Try searching with fewer filters.</p>
                 <a href="/" class="btn-back">← Try Again</a>
             </div>
-
-        <!-- If results were found, loop through each category -->
         {% else %}
             {% for category, parts in grouped_parts.items() %}
                 <div class="category-section">
-
                     <div class="category-heading">
                         <h2>{{ category }}</h2>
                         <span class="category-badge">{{ parts|length }} part{{ 's' if parts|length != 1 else '' }}</span>
                     </div>
-
                     <div class="parts-grid">
                         {% for part in parts %}
                             <div class="part-card">
-
-                                <!-- Position badge if we know Front or Rear -->
                                 {% if part.position %}
-                                    <span class="position-badge {{ 'front' if part.position == 'Front' else '' }}">
-                                        {{ part.position }}
-                                    </span>
+                                    <span class="position-badge {{ 'front' if part.position == 'Front' else '' }}">{{ part.position }}</span>
                                 {% endif %}
-
-                                <!-- Part number -->
                                 <div class="part-number">{{ part.part_number }}</div>
-
-                                <!-- Product type description from catalogue -->
                                 <div class="part-type">{{ part.product_type }}</div>
-
-                                <!-- Price - only show if we have pricing data -->
                                 {% if part.srp_incl_vat %}
                                     <div class="part-price">
-                                        <span class="price-main">
-                                            R{{ "%.2f"|format(part.srp_incl_vat) }}
-                                        </span>
+                                        <span class="price-main">{{ part.srp_incl_vat | currency }}</span>
                                         <span class="price-label">incl. VAT</span>
                                     </div>
-                                    <div class="price-excl">
-                                        R{{ "%.2f"|format(part.srp_excl_vat) }} excl. VAT
-                                    </div>
+                                    <div class="price-excl">{{ part.srp_excl_vat | currency }} excl. VAT</div>
+                                    <!-- Add to Cart button - calls addToCart() with the part details -->
+                                    <button
+                                        class="btn-add-cart"
+                                        id="btn-{{ part.part_number }}"
+                                        onclick="addToCart(
+                                            '{{ part.part_number }}',
+                                            '{{ part.product_type | replace("'", "") }}',
+                                            {{ part.srp_incl_vat }},
+                                            this
+                                        )">
+                                        Add to Cart
+                                    </button>
                                 {% else %}
                                     <p class="no-price">Contact us for pricing</p>
                                 {% endif %}
-
-                                <!-- Add to Cart button (we'll wire this up in Phase 4) -->
-                                <button class="btn-add-cart" onclick="alert('Shopping cart coming soon!')">
-                                    Add to Cart
-                                </button>
-
                             </div>
                         {% endfor %}
                     </div>
-
                 </div>
             {% endfor %}
         {% endif %}
-
     </div>
 
-    <footer>
-        © 2025 Equi Brake Cape · Authorized EBC Brakes Reseller · South Africa
-    </footer>
+    <!-- Toast notification that pops up when item is added -->
+    <div class="toast" id="toast">
+        <strong>✓ Added to cart!</strong> <span id="toast-part"></span>
+    </div>
+
+    <footer>© 2025 Equi Brake Cape · Authorized EBC Brakes Reseller · South Africa</footer>
+
+    <script>
+    // ================================================================
+    // ADD TO CART
+    // Sends the part details to our cart API, then updates the UI
+    // ================================================================
+    function addToCart(partNumber, productType, unitPrice, buttonEl) {
+
+        // Send a POST request to our cart API
+        fetch('/api/cart/add', {
+            method  : 'POST',
+            headers : { 'Content-Type': 'application/json' },
+            body    : JSON.stringify({
+                part_number  : partNumber,
+                product_type : productType,
+                unit_price   : unitPrice,
+                quantity     : 1
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.cart_count !== undefined) {
+
+                // Update the cart badge in the nav
+                document.getElementById('nav-cart-count').textContent = data.cart_count;
+
+                // Change the button to show "Added ✓"
+                buttonEl.textContent   = '✓ Added to Cart';
+                buttonEl.classList.add('added');
+
+                // Show the toast notification
+                document.getElementById('toast-part').textContent = partNumber;
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+
+                // Hide the toast after 3 seconds
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+        })
+        .catch(err => {
+            console.error('Could not add to cart:', err);
+            alert('Could not add to cart. Please try again.');
+        });
+    }
+    </script>
 
 </body>
 </html>

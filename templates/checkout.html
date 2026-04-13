@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | Equi Brake Cape</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --orange: #FF6200; --orange-dark: #CC4E00;
+            --black: #0D0D0D; --black-card: #161616; --black-border: #2A2A2A;
+            --white: #FFFFFF; --grey-light: #AAAAAA; --grey-mid: #555555;
+            --font-head: 'Barlow Condensed', sans-serif; --font-body: 'DM Sans', sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--black); color: var(--white); font-family: var(--font-body); }
+        a    { color: var(--orange); text-decoration: none; }
+
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            display: flex; align-items: center; padding: 0 40px; height: 70px;
+            background: rgba(13,13,13,0.95); border-bottom: 1px solid var(--black-border);
+            backdrop-filter: blur(10px);
+        }
+        .nav-logo { display: flex; align-items: center; gap: 12px; }
+        .nav-logo-mark { width: 38px; height: 38px; background: var(--orange); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 800; font-size: 18px; color: var(--black); }
+        .nav-logo-text { font-family: var(--font-head); font-weight: 700; font-size: 20px; letter-spacing: 1px; line-height: 1.1; }
+        .nav-logo-text span { display: block; font-size: 11px; font-weight: 400; color: var(--grey-light); letter-spacing: 3px; text-transform: uppercase; }
+
+        .page-wrap { max-width: 1100px; margin: 0 auto; padding: 100px 40px 80px; }
+        .page-title { font-family: var(--font-head); font-size: clamp(36px, 5vw, 64px); font-weight: 800; text-transform: uppercase; margin-bottom: 8px; }
+        .page-title em { font-style: normal; color: var(--orange); }
+        .breadcrumb { font-size: 13px; color: var(--grey-light); margin-bottom: 40px; }
+        .breadcrumb a { color: var(--orange); }
+
+        /* ---- Two column layout ---- */
+        .checkout-grid {
+            display: grid; grid-template-columns: 1fr 380px; gap: 40px; align-items: start;
+        }
+        @media (max-width: 900px) {
+            .checkout-grid { grid-template-columns: 1fr; }
+            .page-wrap { padding: 90px 20px 60px; }
+            nav { padding: 0 20px; }
+        }
+
+        /* ---- Form ---- */
+        .form-section { margin-bottom: 32px; }
+        .form-section-title {
+            font-family: var(--font-head); font-size: 20px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 20px; padding-bottom: 10px;
+            border-bottom: 1px solid var(--black-border);
+        }
+        .form-section-title span { color: var(--orange); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full { grid-column: 1 / -1; }
+
+        label {
+            font-size: 11px; font-weight: 600; letter-spacing: 2px;
+            text-transform: uppercase; color: var(--grey-light);
+        }
+        label .required { color: var(--orange); }
+
+        input, select, textarea {
+            background: var(--black-card); border: 1px solid var(--black-border);
+            color: var(--white); padding: 12px 16px; font-family: var(--font-body);
+            font-size: 15px; transition: border-color 0.2s; width: 100%;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--orange); }
+        input::placeholder, textarea::placeholder { color: var(--grey-mid); }
+        textarea { resize: vertical; min-height: 80px; }
+
+        /* SA Provinces dropdown */
+        select option { background: var(--black-card); }
+
+        /* ---- Order Summary Sidebar ---- */
+        .order-sidebar {
+            background: var(--black-card); border: 1px solid var(--black-border); padding: 28px;
+            position: sticky; top: 90px; /* Sticks as you scroll */
+        }
+        .sidebar-title {
+            font-family: var(--font-head); font-size: 20px; font-weight: 800;
+            text-transform: uppercase; margin-bottom: 20px;
+            padding-bottom: 12px; border-bottom: 1px solid var(--black-border);
+        }
+        .sidebar-item {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            padding: 12px 0; border-bottom: 1px solid var(--black-border); gap: 12px;
+        }
+        .sidebar-item:last-of-type { border-bottom: none; }
+        .sidebar-item-info { flex: 1; }
+        .sidebar-item-part { font-family: var(--font-head); font-size: 16px; font-weight: 700; }
+        .sidebar-item-desc { font-size: 12px; color: var(--grey-light); margin-top: 2px; }
+        .sidebar-item-price { font-family: var(--font-head); font-size: 16px; font-weight: 700; color: var(--orange); white-space: nowrap; }
+
+        .summary-divider { border: none; border-top: 1px solid var(--black-border); margin: 16px 0; }
+        .summary-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; color: var(--grey-light); }
+        .summary-row.total { color: var(--white); font-family: var(--font-head); font-size: 22px; font-weight: 800; padding-top: 12px; }
+        .summary-row.total span:last-child { color: var(--orange); }
+
+        /* ---- Submit button ---- */
+        .btn-place-order {
+            width: 100%; padding: 18px; background: var(--orange); color: var(--black);
+            border: none; font-family: var(--font-head); font-size: 20px; font-weight: 800;
+            letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+            margin-top: 24px; transition: background 0.2s;
+        }
+        .btn-place-order:hover { background: var(--orange-dark); color: var(--white); }
+        .btn-place-order:disabled { background: var(--grey-mid); cursor: not-allowed; }
+
+        .order-note { font-size: 12px; color: var(--grey-mid); text-align: center; margin-top: 12px; line-height: 1.5; }
+
+        /* Loading state */
+        .btn-place-order.loading { background: var(--grey-mid); pointer-events: none; }
+
+        footer { background: var(--black-card); border-top: 1px solid var(--black-border); padding: 32px 40px; text-align: center; font-size: 13px; color: var(--grey-mid); margin-top: 60px; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-logo">
+            <a href="/" style="display:flex;align-items:center;gap:12px;color:white;text-decoration:none;">
+                <div class="nav-logo-mark">EBC</div>
+                <div class="nav-logo-text">Equi Brake Cape <span>Authorized EBC Reseller</span></div>
+            </a>
+        </div>
+    </nav>
+
+    <div class="page-wrap">
+        <p class="breadcrumb"><a href="/cart">← Back to Cart</a></p>
+        <h1 class="page-title"><em>Checkout</em></h1>
+
+        <div class="checkout-grid">
+
+            <!-- Left: Customer details form -->
+            <div>
+                <!-- Contact details -->
+                <div class="form-section">
+                    <p class="form-section-title"><span>01</span> Contact Details</p>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Full Name <span class="required">*</span></label>
+                            <input type="text" id="customer_name" placeholder="e.g. John Smith" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email Address <span class="required">*</span></label>
+                            <input type="email" id="customer_email" placeholder="john@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <input type="tel" id="customer_phone" placeholder="082 000 0000">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delivery address -->
+                <div class="form-section">
+                    <p class="form-section-title"><span>02</span> Delivery Address</p>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Street Address <span class="required">*</span></label>
+                            <input type="text" id="delivery_address" placeholder="e.g. 123 Main Road, Suburb" required>
+                        </div>
+                        <div class="form-group">
+                            <label>City <span class="required">*</span></label>
+                            <input type="text" id="delivery_city" placeholder="e.g. Cape Town" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Province <span class="required">*</span></label>
+                            <select id="delivery_province" required>
+                                <option value="">Select Province</option>
+                                <option>Western Cape</option>
+                                <option>Eastern Cape</option>
+                                <option>Northern Cape</option>
+                                <option>North West</option>
+                                <option>Gauteng</option>
+                                <option>Limpopo</option>
+                                <option>Mpumalanga</option>
+                                <option>Free State</option>
+                                <option>KwaZulu-Natal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Postal Code <span class="required">*</span></label>
+                            <input type="text" id="delivery_postcode" placeholder="e.g. 8001" required maxlength="4">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order notes -->
+                <div class="form-section">
+                    <p class="form-section-title"><span>03</span> Order Notes <span style="font-size:14px;color:var(--grey-light);font-weight:400;">(optional)</span></p>
+                    <div class="form-group">
+                        <label>Special Instructions</label>
+                        <textarea id="order_notes" placeholder="e.g. Please call before delivery, gate code, etc."></textarea>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right: Order summary sidebar -->
+            <div class="order-sidebar">
+                <p class="sidebar-title">Your Order</p>
+
+                {% for item in items %}
+                    <div class="sidebar-item">
+                        <div class="sidebar-item-info">
+                            <div class="sidebar-item-part">{{ item.part_number }} ×{{ item.quantity }}</div>
+                            <div class="sidebar-item-desc">{{ item.product_type }}</div>
+                        </div>
+                        <div class="sidebar-item-price">{{ item.line_total | currency }}</div>
+                    </div>
+                {% endfor %}
+
+                <hr class="summary-divider">
+
+                <div class="summary-row">
+                    <span>Subtotal (incl. VAT)</span>
+                    <span>{{ subtotal | currency }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>VAT (15%)</span>
+                    <span>{{ vat_amount | currency }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Delivery</span>
+                    <span>{% if delivery == 0 %}Free{% else %}{{ delivery | currency }}{% endif %}</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total</span>
+                    <span>{{ total | currency }}</span>
+                </div>
+
+                <button class="btn-place-order" id="btn-order" onclick="placeOrder()">
+                    Place Order →
+                </button>
+                <p class="order-note">
+                    By placing your order you agree to our terms.<br>
+                    You will receive a confirmation email.
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+    <footer>© 2025 Equi Brake Cape · Authorized EBC Brakes Reseller · South Africa</footer>
+
+    <script>
+    function placeOrder() {
+        // Collect all form values
+        const name     = document.getElementById('customer_name').value.trim();
+        const email    = document.getElementById('customer_email').value.trim();
+        const phone    = document.getElementById('customer_phone').value.trim();
+        const address  = document.getElementById('delivery_address').value.trim();
+        const city     = document.getElementById('delivery_city').value.trim();
+        const province = document.getElementById('delivery_province').value.trim();
+        const postcode = document.getElementById('delivery_postcode').value.trim();
+        const notes    = document.getElementById('order_notes').value.trim();
+
+        // Validate required fields before sending
+        if (!name || !email || !address || !city || !province || !postcode) {
+            alert('Please fill in all required fields marked with *');
+            return;
+        }
+
+        // Basic email format check
+        if (!email.includes('@') || !email.includes('.')) {
+            alert('Please enter a valid email address');
+            return;
+        }
+
+        // Disable button to prevent double-clicking
+        const btn = document.getElementById('btn-order');
+        btn.textContent = 'Placing Order...';
+        btn.classList.add('loading');
+
+        // Send order to our API
+        fetch('/api/orders', {
+            method  : 'POST',
+            headers : { 'Content-Type': 'application/json' },
+            body    : JSON.stringify({
+                customer_name     : name,
+                customer_email    : email,
+                customer_phone    : phone,
+                delivery_address  : address,
+                delivery_city     : city,
+                delivery_province : province,
+                delivery_postcode : postcode,
+                order_notes       : notes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.order_number) {
+                // Success - redirect to confirmation page
+                window.location.href = `/order/confirmation/${data.order_number}`;
+            } else {
+                // API returned an error
+                alert(data.error || 'Something went wrong. Please try again.');
+                btn.textContent = 'Place Order →';
+                btn.classList.remove('loading');
+            }
+        })
+        .catch(err => {
+            console.error('Order failed:', err);
+            alert('Could not place order. Please try again.');
+            btn.textContent = 'Place Order →';
+            btn.classList.remove('loading');
+        });
+    }
+    </script>
+
+</body>
+</html>

@@ -1,12 +1,10 @@
 # =============================================================================
 # database.py
 # =============================================================================
-# Creates the database and all 3 tables we need.
-# Run this ONCE before starting the server.
-# Command: python3 database.py
+# Creates the database and ALL tables.
+# Run this ONCE on a fresh start - it wipes and recreates all tables.
 #
-# WARNING: Running this file will DROP (delete) and recreate all tables.
-# Only run it on a fresh start or when you want to wipe all data.
+# Command: python3 database.py
 # =============================================================================
 
 import sqlite3
@@ -14,26 +12,28 @@ import sqlite3
 
 def create_database():
     """
-    Creates products.db with 3 tables:
-    1. vehicles       - every vehicle from the catalogue
-    2. products       - every EBC part number with pricing
-    3. vehicle_fitment - links vehicles to the parts that fit them
+    Creates products.db with 5 tables:
+    1. vehicles        - every vehicle from the catalogue
+    2. products        - every EBC part number with pricing
+    3. vehicle_fitment - links vehicles to parts that fit them
+    4. orders          - every customer order placed
+    5. order_items     - every line item within an order
     """
 
     connection = sqlite3.connect('products.db')
     cursor = connection.cursor()
 
     # -------------------------------------------------------------------------
-    # Drop tables if they already exist (clean slate)
+    # Drop all tables cleanly (order matters because of foreign keys)
     # -------------------------------------------------------------------------
+    cursor.execute('DROP TABLE IF EXISTS order_items')
+    cursor.execute('DROP TABLE IF EXISTS orders')
     cursor.execute('DROP TABLE IF EXISTS vehicle_fitment')
     cursor.execute('DROP TABLE IF EXISTS products')
     cursor.execute('DROP TABLE IF EXISTS vehicles')
 
     # -------------------------------------------------------------------------
     # TABLE 1: vehicles
-    # One row per vehicle from the Vehicle Catalogue.
-    # Stores the vehicle identity and disc/caliper specs.
     # -------------------------------------------------------------------------
     cursor.execute('''
         CREATE TABLE vehicles (
@@ -63,26 +63,9 @@ def create_database():
             rear_shoe_type       TEXT
         )
     ''')
-    # Column explanations:
-    # make/model/sub_model   - e.g. Toyota / Corolla / Verso
-    # engine                 - e.g. 2.0L
-    # engine_type            - e.g. Petrol, Diesel
-    # valves                 - number of valves
-    # bhp                    - brake horsepower
-    # year                   - e.g. 2015-2022 or just 2018
-    # special_comments       - any notes from EBC catalogue
-    # front/rear_caliper     - caliper brand/type
-    # front/rear_solid_vented- whether disc is solid or vented
-    # front/rear_bolt_holes  - number of bolt holes on disc
-    # front/rear_diameter    - disc diameter in mm
-    # front/rear_total_height- disc total height
-    # front/rear_thickness   - disc thickness new/minimum
-    # front/rear_shoe_type   - brake shoe type if applicable
 
     # -------------------------------------------------------------------------
     # TABLE 2: products
-    # One row per EBC part number.
-    # Pricing comes from the RSA Dealer Pricelist.
     # -------------------------------------------------------------------------
     cursor.execute('''
         CREATE TABLE products (
@@ -96,20 +79,9 @@ def create_database():
             srp_incl_vat     REAL
         )
     ''')
-    # Column explanations:
-    # part_number    - EBC part number e.g. "DP21074" - unique identifier
-    # description    - what the product is e.g. "EBC Greenstuff Front Pads"
-    # category       - e.g. "Brake Pads", "Brake Discs", "Brake Lines", "Kit"
-    # dealer1_price  - price less 15% excl VAT (your dealer tier 1 cost)
-    # dealer2_price  - price less 20% excl VAT (your dealer tier 2 cost)
-    # dealer3_price  - price less 30% excl VAT (your dealer tier 3 cost)
-    # srp_excl_vat   - suggested retail price excluding VAT
-    # srp_incl_vat   - suggested retail price including VAT (what customer pays)
 
     # -------------------------------------------------------------------------
     # TABLE 3: vehicle_fitment
-    # Links a vehicle to a part number.
-    # One row = "this part fits this vehicle in this position"
     # -------------------------------------------------------------------------
     cursor.execute('''
         CREATE TABLE vehicle_fitment (
@@ -121,22 +93,78 @@ def create_database():
             FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
         )
     ''')
+
+    # -------------------------------------------------------------------------
+    # TABLE 4: orders
+    # One row per customer order.
+    # -------------------------------------------------------------------------
+    cursor.execute('''
+        CREATE TABLE orders (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_number      TEXT    NOT NULL UNIQUE,
+            status            TEXT    DEFAULT 'pending',
+            customer_name     TEXT    NOT NULL,
+            customer_email    TEXT    NOT NULL,
+            customer_phone    TEXT,
+            delivery_address  TEXT    NOT NULL,
+            delivery_city     TEXT    NOT NULL,
+            delivery_province TEXT    NOT NULL,
+            delivery_postcode TEXT    NOT NULL,
+            order_notes       TEXT,
+            subtotal          REAL    NOT NULL,
+            vat_amount        REAL    NOT NULL,
+            delivery_fee      REAL    NOT NULL DEFAULT 0,
+            total_amount      REAL    NOT NULL,
+            created_at        TEXT    DEFAULT (datetime('now', 'localtime'))
+        )
+    ''')
     # Column explanations:
-    # vehicle_id    - links to the vehicles table (the car/bike this fits)
-    # part_number   - links to the products table (the EBC part)
-    # product_type  - the column name from the catalogue
-    #                 e.g. "EBC Greenstuff Front Pads"
-    # position      - "Front", "Rear", "Both", or blank
-    #                 extracted automatically from the product_type name
+    # order_number     - Human readable e.g. "EBC-20250413-0001"
+    # status           - "pending", "confirmed", "shipped", "delivered", "cancelled"
+    # subtotal         - total before VAT
+    # vat_amount       - the VAT portion (15% in SA)
+    # delivery_fee     - shipping cost (we'll calculate this later)
+    # total_amount     - the final amount the customer pays
+    # created_at       - date and time the order was placed
+
+    # -------------------------------------------------------------------------
+    # TABLE 5: order_items
+    # One row per product line within an order.
+    # e.g. An order for 2x brake pads and 1x disc = 2 rows here
+    # -------------------------------------------------------------------------
+    cursor.execute('''
+        CREATE TABLE order_items (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id      INTEGER NOT NULL,
+            part_number   TEXT    NOT NULL,
+            product_type  TEXT,
+            category      TEXT,
+            quantity      INTEGER NOT NULL DEFAULT 1,
+            unit_price    REAL    NOT NULL,
+            line_total    REAL    NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders(id)
+        )
+    ''')
+    # Column explanations:
+    # order_id     - links to the orders table
+    # part_number  - the EBC part number e.g. "DP21074"
+    # product_type - description e.g. "EBC Greenstuff Front Pads"
+    # quantity     - how many the customer ordered
+    # unit_price   - price per unit at time of order (incl VAT)
+    # line_total   - quantity x unit_price
 
     connection.commit()
     connection.close()
 
-    print("✅ Database created with 3 tables: vehicles, products, vehicle_fitment")
-    print("📄 File saved as: products.db")
+    print("✅ Database created with 5 tables:")
+    print("   - vehicles")
+    print("   - products")
+    print("   - vehicle_fitment")
+    print("   - orders")
+    print("   - order_items")
     print("\nNext steps:")
-    print("  1. python3 import_prices.py        (import pricing from File 2)")
-    print("  2. python3 import_catalogue.py     (import vehicles and fitment from File 1)")
+    print("  1. python3 import_prices.py")
+    print("  2. python3 import_catalogue.py")
 
 
 if __name__ == '__main__':

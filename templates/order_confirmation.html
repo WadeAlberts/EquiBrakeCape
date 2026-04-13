@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmed | Equi Brake Cape</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --orange: #FF6200; --orange-dark: #CC4E00;
+            --black: #0D0D0D; --black-card: #161616; --black-border: #2A2A2A;
+            --white: #FFFFFF; --grey-light: #AAAAAA; --grey-mid: #555555;
+            --green: #22c55e;
+            --font-head: 'Barlow Condensed', sans-serif; --font-body: 'DM Sans', sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--black); color: var(--white); font-family: var(--font-body); }
+        a { color: var(--orange); text-decoration: none; }
+
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            display: flex; align-items: center; padding: 0 40px; height: 70px;
+            background: rgba(13,13,13,0.95); border-bottom: 1px solid var(--black-border);
+            backdrop-filter: blur(10px);
+        }
+        .nav-logo { display: flex; align-items: center; gap: 12px; }
+        .nav-logo-mark { width: 38px; height: 38px; background: var(--orange); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 800; font-size: 18px; color: var(--black); }
+        .nav-logo-text { font-family: var(--font-head); font-weight: 700; font-size: 20px; letter-spacing: 1px; line-height: 1.1; }
+        .nav-logo-text span { display: block; font-size: 11px; font-weight: 400; color: var(--grey-light); letter-spacing: 3px; text-transform: uppercase; }
+
+        .page-wrap { max-width: 760px; margin: 0 auto; padding: 100px 40px 80px; }
+
+        /* ---- Success header ---- */
+        .success-header { text-align: center; padding: 48px 0 40px; }
+        .success-icon {
+            width: 72px; height: 72px; background: var(--green);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 36px; margin: 0 auto 24px;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+        .success-title {
+            font-family: var(--font-head); font-size: clamp(36px, 6vw, 64px);
+            font-weight: 800; text-transform: uppercase;
+        }
+        .success-title em { font-style: normal; color: var(--green); }
+        .success-sub { font-size: 16px; color: var(--grey-light); margin-top: 12px; }
+
+        /* ---- Order number box ---- */
+        .order-number-box {
+            background: var(--black-card); border: 1px solid var(--orange);
+            padding: 24px; text-align: center; margin: 32px 0;
+        }
+        .order-number-label { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--grey-light); margin-bottom: 8px; }
+        .order-number-value { font-family: var(--font-head); font-size: 36px; font-weight: 800; color: var(--orange); letter-spacing: 2px; }
+
+        /* ---- Details sections ---- */
+        .detail-box {
+            background: var(--black-card); border: 1px solid var(--black-border);
+            padding: 28px; margin-bottom: 20px;
+        }
+        .detail-box h3 {
+            font-family: var(--font-head); font-size: 18px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+            padding-bottom: 10px; border-bottom: 1px solid var(--black-border);
+            color: var(--orange);
+        }
+        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid var(--black-border); }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-row span:first-child { color: var(--grey-light); }
+        .detail-row span:last-child { font-weight: 500; text-align: right; }
+
+        /* Items list */
+        .item-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid var(--black-border); gap: 12px;
+        }
+        .item-row:last-child { border-bottom: none; }
+        .item-part { font-family: var(--font-head); font-size: 18px; font-weight: 800; }
+        .item-desc { font-size: 12px; color: var(--grey-light); margin-top: 2px; }
+        .item-qty  { font-size: 13px; color: var(--grey-light); white-space: nowrap; }
+        .item-price { font-family: var(--font-head); font-size: 18px; font-weight: 800; color: var(--orange); white-space: nowrap; }
+
+        /* Totals */
+        .totals-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; color: var(--grey-light); }
+        .totals-row.grand { color: var(--white); font-family: var(--font-head); font-size: 26px; font-weight: 800; padding-top: 16px; border-top: 1px solid var(--black-border); margin-top: 8px; }
+        .totals-row.grand span:last-child { color: var(--orange); }
+
+        /* ---- Actions ---- */
+        .actions { display: flex; gap: 16px; margin-top: 32px; flex-wrap: wrap; }
+        .btn-primary {
+            flex: 1; padding: 16px; background: var(--orange); color: var(--black);
+            border: none; font-family: var(--font-head); font-size: 18px; font-weight: 800;
+            letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+            text-align: center; transition: background 0.2s;
+        }
+        .btn-primary:hover { background: var(--orange-dark); color: var(--white); }
+        .btn-secondary {
+            flex: 1; padding: 16px; background: transparent;
+            border: 1px solid var(--black-border); color: var(--grey-light);
+            font-family: var(--font-head); font-size: 18px; font-weight: 800;
+            letter-spacing: 1px; text-transform: uppercase; text-align: center;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .btn-secondary:hover { border-color: var(--orange); color: var(--orange); }
+
+        footer { background: var(--black-card); border-top: 1px solid var(--black-border); padding: 32px 40px; text-align: center; font-size: 13px; color: var(--grey-mid); margin-top: 60px; }
+
+        @media (max-width: 600px) {
+            .page-wrap { padding: 90px 20px 60px; }
+            nav { padding: 0 20px; }
+            .actions { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-logo">
+            <a href="/" style="display:flex;align-items:center;gap:12px;color:white;text-decoration:none;">
+                <div class="nav-logo-mark">EBC</div>
+                <div class="nav-logo-text">Equi Brake Cape <span>Authorized EBC Reseller</span></div>
+            </a>
+        </div>
+    </nav>
+
+    <div class="page-wrap">
+
+        <!-- Success Header -->
+        <div class="success-header">
+            <div class="success-icon">✓</div>
+            <h1 class="success-title">Order <em>Confirmed!</em></h1>
+            <p class="success-sub">
+                Thank you, <strong>{{ order.customer_name }}</strong>!
+                A confirmation has been sent to <strong>{{ order.customer_email }}</strong>.
+            </p>
+        </div>
+
+        <!-- Order Number -->
+        <div class="order-number-box">
+            <p class="order-number-label">Your Order Number</p>
+            <p class="order-number-value">{{ order.order_number }}</p>
+        </div>
+
+        <!-- Items Ordered -->
+        <div class="detail-box">
+            <h3>Items Ordered</h3>
+            {% for item in items %}
+                <div class="item-row">
+                    <div>
+                        <div class="item-part">{{ item.part_number }}</div>
+                        <div class="item-desc">{{ item.product_type }}</div>
+                    </div>
+                    <div class="item-qty">×{{ item.quantity }}</div>
+                    <div class="item-price">{{ item.line_total | currency }}</div>
+                </div>
+            {% endfor %}
+            <div class="totals-row" style="margin-top:16px;">
+                <span>VAT (15%)</span>
+                <span>{{ order.vat_amount | currency }}</span>
+            </div>
+            <div class="totals-row">
+                <span>Delivery</span>
+                <span>{% if order.delivery_fee == 0 %}Free{% else %}{{ order.delivery_fee | currency }}{% endif %}</span>
+            </div>
+            <div class="totals-row grand">
+                <span>Total Paid</span>
+                <span>{{ order.total_amount | currency }}</span>
+            </div>
+        </div>
+
+        <!-- Delivery Details -->
+        <div class="detail-box">
+            <h3>Delivery Details</h3>
+            <div class="detail-row">
+                <span>Name</span>
+                <span>{{ order.customer_name }}</span>
+            </div>
+            <div class="detail-row">
+                <span>Address</span>
+                <span>{{ order.delivery_address }}</span>
+            </div>
+            <div class="detail-row">
+                <span>City</span>
+                <span>{{ order.delivery_city }}</span>
+            </div>
+            <div class="detail-row">
+                <span>Province</span>
+                <span>{{ order.delivery_province }}</span>
+            </div>
+            <div class="detail-row">
+                <span>Postal Code</span>
+                <span>{{ order.delivery_postcode }}</span>
+            </div>
+            {% if order.order_notes %}
+                <div class="detail-row">
+                    <span>Notes</span>
+                    <span>{{ order.order_notes }}</span>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+            <a href="/" class="btn-primary">Find More Parts →</a>
+            <a href="/" class="btn-secondary">← Back to Home</a>
+        </div>
+
+    </div>
+
+    <footer>© 2025 Equi Brake Cape · Authorized EBC Brakes Reseller · South Africa</footer>
+
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Cart | Equi Brake Cape</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --orange: #FF6200; --orange-dark: #CC4E00;
+            --black: #0D0D0D; --black-card: #161616; --black-border: #2A2A2A;
+            --white: #FFFFFF; --grey-light: #AAAAAA; --grey-mid: #555555;
+            --red: #ef4444; --font-head: 'Barlow Condensed', sans-serif; --font-body: 'DM Sans', sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--black); color: var(--white); font-family: var(--font-body); }
+        a    { color: var(--orange); text-decoration: none; }
+
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 40px; height: 70px;
+            background: rgba(13,13,13,0.95); border-bottom: 1px solid var(--black-border);
+            backdrop-filter: blur(10px);
+        }
+        .nav-logo { display: flex; align-items: center; gap: 12px; }
+        .nav-logo-mark { width: 38px; height: 38px; background: var(--orange); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 800; font-size: 18px; color: var(--black); }
+        .nav-logo-text { font-family: var(--font-head); font-weight: 700; font-size: 20px; letter-spacing: 1px; line-height: 1.1; }
+        .nav-logo-text span { display: block; font-size: 11px; font-weight: 400; color: var(--grey-light); letter-spacing: 3px; text-transform: uppercase; }
+
+        .page-wrap { max-width: 1000px; margin: 0 auto; padding: 100px 40px 80px; }
+        .page-title { font-family: var(--font-head); font-size: clamp(36px, 5vw, 64px); font-weight: 800; text-transform: uppercase; margin-bottom: 8px; }
+        .page-title em { font-style: normal; color: var(--orange); }
+        .breadcrumb { font-size: 13px; color: var(--grey-light); margin-bottom: 32px; }
+        .breadcrumb a { color: var(--orange); }
+
+        /* ---- Empty cart ---- */
+        .empty-cart { text-align: center; padding: 80px 20px; }
+        .empty-cart h2 { font-family: var(--font-head); font-size: 36px; text-transform: uppercase; margin-bottom: 16px; }
+        .empty-cart p { color: var(--grey-light); margin-bottom: 32px; }
+
+        /* ---- Cart table ---- */
+        .cart-table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+        .cart-table th {
+            font-family: var(--font-head); font-size: 13px; font-weight: 700;
+            letter-spacing: 2px; text-transform: uppercase; color: var(--grey-light);
+            text-align: left; padding: 12px 16px;
+            border-bottom: 1px solid var(--black-border);
+        }
+        .cart-table td {
+            padding: 20px 16px; border-bottom: 1px solid var(--black-border);
+            vertical-align: middle;
+        }
+        .cart-table tr:last-child td { border-bottom: none; }
+        .cart-table tr { background: var(--black-card); transition: background 0.2s; }
+        .cart-table tr:hover { background: #1c1c1c; }
+
+        .item-part { font-family: var(--font-head); font-size: 20px; font-weight: 800; }
+        .item-desc { font-size: 13px; color: var(--grey-light); margin-top: 2px; }
+
+        /* Quantity controls */
+        .qty-controls { display: flex; align-items: center; gap: 8px; }
+        .qty-btn {
+            width: 32px; height: 32px; background: var(--black); border: 1px solid var(--black-border);
+            color: var(--white); font-size: 18px; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; transition: border-color 0.2s;
+        }
+        .qty-btn:hover { border-color: var(--orange); color: var(--orange); }
+        .qty-display {
+            width: 40px; text-align: center; font-family: var(--font-head);
+            font-size: 18px; font-weight: 700;
+        }
+
+        .item-price { font-family: var(--font-head); font-size: 18px; font-weight: 700; color: var(--orange); }
+
+        .btn-remove {
+            background: none; border: 1px solid var(--black-border); color: var(--grey-mid);
+            padding: 6px 12px; font-size: 12px; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-remove:hover { border-color: var(--red); color: var(--red); }
+
+        /* ---- Order summary ---- */
+        .summary-box {
+            background: var(--black-card); border: 1px solid var(--black-border);
+            padding: 32px; max-width: 420px; margin-left: auto;
+        }
+        .summary-box h3 {
+            font-family: var(--font-head); font-size: 22px; font-weight: 800;
+            text-transform: uppercase; margin-bottom: 24px;
+            padding-bottom: 12px; border-bottom: 1px solid var(--black-border);
+        }
+        .summary-row {
+            display: flex; justify-content: space-between;
+            padding: 8px 0; font-size: 15px; color: var(--grey-light);
+        }
+        .summary-row.total {
+            border-top: 1px solid var(--black-border); margin-top: 12px;
+            padding-top: 16px; color: var(--white);
+            font-family: var(--font-head); font-size: 24px; font-weight: 800;
+        }
+        .summary-row.total span:last-child { color: var(--orange); }
+
+        .btn-checkout {
+            display: block; width: 100%; padding: 18px;
+            background: var(--orange); color: var(--black); border: none;
+            font-family: var(--font-head); font-size: 20px; font-weight: 800;
+            letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+            margin-top: 24px; transition: background 0.2s; text-align: center;
+            text-decoration: none;
+        }
+        .btn-checkout:hover { background: var(--orange-dark); color: var(--white); }
+
+        .btn-continue {
+            display: block; text-align: center; margin-top: 12px;
+            font-size: 14px; color: var(--grey-light);
+        }
+        .btn-continue:hover { color: var(--orange); }
+
+        footer { background: var(--black-card); border-top: 1px solid var(--black-border); padding: 32px 40px; text-align: center; font-size: 13px; color: var(--grey-mid); margin-top: 0; }
+
+        @media (max-width: 768px) {
+            .page-wrap { padding: 90px 20px 60px; }
+            nav { padding: 0 20px; }
+            .summary-box { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-logo">
+            <a href="/" style="display:flex;align-items:center;gap:12px;color:white;text-decoration:none;">
+                <div class="nav-logo-mark">EBC</div>
+                <div class="nav-logo-text">Equi Brake Cape <span>Authorized EBC Reseller</span></div>
+            </a>
+        </div>
+    </nav>
+
+    <div class="page-wrap">
+        <p class="breadcrumb"><a href="/">← Continue Shopping</a></p>
+        <h1 class="page-title">Your <em>Cart</em></h1>
+
+        {% if items %}
+
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Unit Price</th>
+                        <th>Quantity</th>
+                        <th>Total</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="cart-body">
+                    {% for item in items %}
+                        <tr id="row-{{ item.part_number }}">
+                            <td>
+                                <div class="item-part">{{ item.part_number }}</div>
+                                <div class="item-desc">{{ item.product_type }}</div>
+                            </td>
+                            <td class="item-price">{{ item.unit_price | currency }}</td>
+                            <td>
+                                <div class="qty-controls">
+                                    <button class="qty-btn" onclick="changeQty('{{ item.part_number }}', {{ item.quantity }} - 1)">−</button>
+                                    <div class="qty-display" id="qty-{{ item.part_number }}">{{ item.quantity }}</div>
+                                    <button class="qty-btn" onclick="changeQty('{{ item.part_number }}', {{ item.quantity }} + 1)">+</button>
+                                </div>
+                            </td>
+                            <td class="item-price" id="line-{{ item.part_number }}">{{ item.line_total | currency }}</td>
+                            <td>
+                                <button class="btn-remove" onclick="removeItem('{{ item.part_number }}')">Remove</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Order Summary -->
+            <div class="summary-box">
+                <h3>Order Summary</h3>
+                <div class="summary-row">
+                    <span>Subtotal (incl. VAT)</span>
+                    <span>{{ subtotal | currency }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>VAT (15%)</span>
+                    <span>{{ vat_amount | currency }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Delivery</span>
+                    <span>{% if delivery == 0 %}Free{% else %}{{ delivery | currency }}{% endif %}</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total</span>
+                    <span>{{ total | currency }}</span>
+                </div>
+                <a href="/checkout" class="btn-checkout">Proceed to Checkout →</a>
+                <a href="/" class="btn-continue">← Continue Shopping</a>
+            </div>
+
+        {% else %}
+
+            <div class="empty-cart">
+                <h2>Your Cart is Empty</h2>
+                <p>You haven't added any parts yet. Use the vehicle finder to find parts that fit your car.</p>
+                <a href="/" class="btn-checkout" style="display:inline-block;width:auto;padding:16px 40px;">Find Parts →</a>
+            </div>
+
+        {% endif %}
+
+    </div>
+
+    <footer>© 2025 Equi Brake Cape · Authorized EBC Brakes Reseller · South Africa</footer>
+
+    <script>
+    // Updates the quantity of an item in the cart
+    function changeQty(partNumber, newQty) {
+        fetch('/api/cart/update', {
+            method  : 'PATCH',
+            headers : { 'Content-Type': 'application/json' },
+            body    : JSON.stringify({ part_number: partNumber, quantity: newQty })
+        })
+        .then(() => location.reload()); // Reload page to show updated totals
+    }
+
+    // Removes an item from the cart completely
+    function removeItem(partNumber) {
+        fetch(`/api/cart/remove/${partNumber}`, { method: 'DELETE' })
+        .then(() => location.reload());
+    }
+    </script>
+
+</body>
+</html>
