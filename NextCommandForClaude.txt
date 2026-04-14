@@ -1,0 +1,89 @@
+Project: Equi Brake Cape — EBC Brake Store
+
+I am building an online brake parts store using Python and Flask. I am a business analyst, not a developer. Please explain everything simply.
+
+Tech stack: Python, Flask, SQLite, HTML/CSS/JS. No frameworks like React.
+
+GitHub repo: https://github.com/WadeAlberts/EquiBrakeCape.git
+
+Folder structure:
+
+
+
+```
+
+EquiBrakeCape/
+
+├── app.py                  ← Main Flask server, all routes and API
+
+├── database.py             ← Creates all 5 database tables
+
+├── import_prices.py        ← Imports EBC pricelist Excel into products table
+
+├── import_catalogue.py     ← Imports vehicle catalogue Excel (~30k rows)
+
+├── products.db             ← SQLite database (local only, not on GitHub)
+
+├── .gitignore              ← Excludes .db and .xlsx files
+
+└── templates/
+
+    ├── index.html          ← Home page with vehicle finder + category browser
+
+    ├── results.html        ← Search results page showing matching parts
+
+    ├── cart.html           ← Shopping cart page
+
+    ├── checkout.html       ← Checkout form (name, email, address)
+
+    └── order_confirmation.html ← Post-order confirmation page
+
+```
+
+
+
+Database tables: vehicles, products, vehicle_fitment, orders, order_items
+
+Completed phases:
+
+
+
+* Phase 1: Flask setup, SQLite database, GitHub
+
+* Phase 2: Excel import (vehicles + pricing, ~30k rows)
+
+* Phase 3: Home page with cascading vehicle finder dropdowns, results page
+
+* Phase 4: Cart (session-based), checkout, order confirmation, email via smtpd
+
+Rules you must follow:
+
+
+
+* Always provide full replacement code, never partial snippets
+
+* Remind me to push to GitHub after every positive code change
+
+* Explain everything like I am 12 years old with comments in all code
+
+* Keep code as simple as possible
+
+* OS: Mac and Windows (switching between both)
+
+* Run server with: `python3 app.py`
+
+* Currency format: R1 250.00 (South African Rand, space as thousands separator)
+
+* VAT rate: 15% (South Africa)
+
+Upcoming phases:
+
+
+
+* Phase 5: PayFast payment integration
+
+* Phase 6: UAT and PROD environments (Railway or Render — free hosting)
+
+* Final phase: Full UI/UX refinement pass on everything
+
+We are currently on: Phase 4 complete, about to start Phase 5
