@@ -8,39 +8,65 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --orange: #FF6200; --orange-dark: #CC4E00;
-            --black: #0D0D0D; --black-card: #161616; --black-border: #2A2A2A;
-            --white: #FFFFFF; --grey-light: #AAAAAA; --grey-mid: #555555;
-            --red: #ef4444; --font-head: 'Barlow Condensed', sans-serif; --font-body: 'DM Sans', sans-serif;
+            --orange      : #FF6200;
+            --orange-dark : #CC4E00;
+            --black       : #0D0D0D;
+            --black-card  : #161616;
+            --black-border: #2A2A2A;
+            --white       : #FFFFFF;
+            --grey-light  : #AAAAAA;
+            --grey-mid    : #555555;
+            --red         : #ef4444;
+            --font-head   : 'Barlow Condensed', sans-serif;
+            --font-body   : 'DM Sans', sans-serif;
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--black); color: var(--white); font-family: var(--font-body); }
-        a    { color: var(--orange); text-decoration: none; }
+        a { color: var(--orange); text-decoration: none; }
 
+        /* Navigation */
         nav {
             position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 40px; height: 70px;
-            background: rgba(13,13,13,0.95); border-bottom: 1px solid var(--black-border);
+            background: rgba(13,13,13,0.95);
+            border-bottom: 1px solid var(--black-border);
             backdrop-filter: blur(10px);
         }
         .nav-logo { display: flex; align-items: center; gap: 12px; }
-        .nav-logo-mark { width: 38px; height: 38px; background: var(--orange); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 800; font-size: 18px; color: var(--black); }
-        .nav-logo-text { font-family: var(--font-head); font-weight: 700; font-size: 20px; letter-spacing: 1px; line-height: 1.1; }
-        .nav-logo-text span { display: block; font-size: 11px; font-weight: 400; color: var(--grey-light); letter-spacing: 3px; text-transform: uppercase; }
+        .nav-logo-mark {
+            width: 38px; height: 38px; background: var(--orange);
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-head); font-weight: 800; font-size: 18px; color: var(--black);
+        }
+        .nav-logo-text {
+            font-family: var(--font-head); font-weight: 700;
+            font-size: 20px; letter-spacing: 1px; line-height: 1.1;
+        }
+        .nav-logo-text span {
+            display: block; font-size: 11px; font-weight: 400;
+            color: var(--grey-light); letter-spacing: 3px; text-transform: uppercase;
+        }
 
+        /* Page layout */
         .page-wrap { max-width: 1000px; margin: 0 auto; padding: 100px 40px 80px; }
-        .page-title { font-family: var(--font-head); font-size: clamp(36px, 5vw, 64px); font-weight: 800; text-transform: uppercase; margin-bottom: 8px; }
+        .page-title {
+            font-family: var(--font-head); font-size: clamp(36px, 5vw, 64px);
+            font-weight: 800; text-transform: uppercase; margin-bottom: 8px;
+        }
         .page-title em { font-style: normal; color: var(--orange); }
         .breadcrumb { font-size: 13px; color: var(--grey-light); margin-bottom: 32px; }
         .breadcrumb a { color: var(--orange); }
 
-        /* ---- Empty cart ---- */
+        /* Empty cart */
         .empty-cart { text-align: center; padding: 80px 20px; }
-        .empty-cart h2 { font-family: var(--font-head); font-size: 36px; text-transform: uppercase; margin-bottom: 16px; }
+        .empty-cart h2 {
+            font-family: var(--font-head); font-size: 36px;
+            text-transform: uppercase; margin-bottom: 16px;
+        }
         .empty-cart p { color: var(--grey-light); margin-bottom: 32px; }
 
-        /* ---- Cart table ---- */
+        /* Cart table */
         .cart-table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
         .cart-table th {
             font-family: var(--font-head); font-size: 13px; font-weight: 700;
@@ -56,31 +82,38 @@
         .cart-table tr { background: var(--black-card); transition: background 0.2s; }
         .cart-table tr:hover { background: #1c1c1c; }
 
-        .item-part { font-family: var(--font-head); font-size: 20px; font-weight: 800; }
+        .item-part {
+            font-family: var(--font-head); font-size: 20px; font-weight: 800;
+        }
         .item-desc { font-size: 13px; color: var(--grey-light); margin-top: 2px; }
 
         /* Quantity controls */
         .qty-controls { display: flex; align-items: center; gap: 8px; }
         .qty-btn {
-            width: 32px; height: 32px; background: var(--black); border: 1px solid var(--black-border);
-            color: var(--white); font-size: 18px; cursor: pointer; display: flex;
-            align-items: center; justify-content: center; transition: border-color 0.2s;
+            width: 32px; height: 32px; background: var(--black);
+            border: 1px solid var(--black-border); color: var(--white);
+            font-size: 18px; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+            transition: border-color 0.2s;
         }
         .qty-btn:hover { border-color: var(--orange); color: var(--orange); }
         .qty-display {
-            width: 40px; text-align: center; font-family: var(--font-head);
-            font-size: 18px; font-weight: 700;
+            width: 40px; text-align: center;
+            font-family: var(--font-head); font-size: 18px; font-weight: 700;
         }
 
-        .item-price { font-family: var(--font-head); font-size: 18px; font-weight: 700; color: var(--orange); }
-
+        .item-price {
+            font-family: var(--font-head); font-size: 18px;
+            font-weight: 700; color: var(--orange);
+        }
         .btn-remove {
-            background: none; border: 1px solid var(--black-border); color: var(--grey-mid);
-            padding: 6px 12px; font-size: 12px; cursor: pointer; transition: all 0.2s;
+            background: none; border: 1px solid var(--black-border);
+            color: var(--grey-mid); padding: 6px 12px;
+            font-size: 12px; cursor: pointer; transition: all 0.2s;
         }
         .btn-remove:hover { border-color: var(--red); color: var(--red); }
 
-        /* ---- Order summary ---- */
+        /* Order summary */
         .summary-box {
             background: var(--black-card); border: 1px solid var(--black-border);
             padding: 32px; max-width: 420px; margin-left: auto;
@@ -117,7 +150,10 @@
         }
         .btn-continue:hover { color: var(--orange); }
 
-        footer { background: var(--black-card); border-top: 1px solid var(--black-border); padding: 32px 40px; text-align: center; font-size: 13px; color: var(--grey-mid); margin-top: 0; }
+        footer {
+            background: var(--black-card); border-top: 1px solid var(--black-border);
+            padding: 32px 40px; text-align: center; font-size: 13px; color: var(--grey-mid);
+        }
 
         @media (max-width: 768px) {
             .page-wrap { padding: 90px 20px 60px; }
@@ -130,14 +166,19 @@
 
     <nav>
         <div class="nav-logo">
-            <a href="/" style="display:flex;align-items:center;gap:12px;color:white;text-decoration:none;">
+            <a href="/" style="display:flex; align-items:center; gap:12px;
+                               color:white; text-decoration:none;">
                 <div class="nav-logo-mark">EBC</div>
-                <div class="nav-logo-text">Equi Brake Cape <span>Authorized EBC Reseller</span></div>
+                <div class="nav-logo-text">
+                    Equi Brake Cape
+                    <span>Authorized EBC Reseller</span>
+                </div>
             </a>
         </div>
     </nav>
 
     <div class="page-wrap">
+
         <p class="breadcrumb"><a href="/">← Continue Shopping</a></p>
         <h1 class="page-title">Your <em>Cart</em></h1>
 
@@ -153,7 +194,12 @@
                         <th></th>
                     </tr>
                 </thead>
-                <tbody id="cart-body">
+                <tbody>
+                    <!--
+                        We use data- attributes on the buttons instead of inline
+                        arithmetic in onclick="". This avoids VS Code linting warnings
+                        from Jinja2 expressions inside HTML event attributes.
+                    -->
                     {% for item in items %}
                         <tr id="row-{{ item.part_number }}">
                             <td>
@@ -163,14 +209,35 @@
                             <td class="item-price">{{ item.unit_price | currency }}</td>
                             <td>
                                 <div class="qty-controls">
-                                    <button class="qty-btn" onclick="changeQty('{{ item.part_number }}', {{ item.quantity }} - 1)">−</button>
-                                    <div class="qty-display" id="qty-{{ item.part_number }}">{{ item.quantity }}</div>
-                                    <button class="qty-btn" onclick="changeQty('{{ item.part_number }}', {{ item.quantity }} + 1)">+</button>
+                                    <button
+                                        class="qty-btn"
+                                        data-part="{{ item.part_number }}"
+                                        data-action="decrease"
+                                        data-qty="{{ item.quantity }}">
+                                        −
+                                    </button>
+                                    <div class="qty-display" id="qty-{{ item.part_number }}">
+                                        {{ item.quantity }}
+                                    </div>
+                                    <button
+                                        class="qty-btn"
+                                        data-part="{{ item.part_number }}"
+                                        data-action="increase"
+                                        data-qty="{{ item.quantity }}">
+                                        +
+                                    </button>
                                 </div>
                             </td>
-                            <td class="item-price" id="line-{{ item.part_number }}">{{ item.line_total | currency }}</td>
+                            <td class="item-price" id="line-{{ item.part_number }}">
+                                {{ item.line_total | currency }}
+                            </td>
                             <td>
-                                <button class="btn-remove" onclick="removeItem('{{ item.part_number }}')">Remove</button>
+                                <button
+                                    class="btn-remove"
+                                    data-part="{{ item.part_number }}"
+                                    data-action="remove">
+                                    Remove
+                                </button>
                             </td>
                         </tr>
                     {% endfor %}
@@ -204,32 +271,72 @@
 
             <div class="empty-cart">
                 <h2>Your Cart is Empty</h2>
-                <p>You haven't added any parts yet. Use the vehicle finder to find parts that fit your car.</p>
-                <a href="/" class="btn-checkout" style="display:inline-block;width:auto;padding:16px 40px;">Find Parts →</a>
+                <p>You have not added any parts yet.
+                   Use the vehicle finder to find parts that fit your car.</p>
+                <a href="/" class="btn-checkout"
+                   style="display:inline-block; width:auto; padding:16px 40px;">
+                    Find Parts →
+                </a>
             </div>
 
         {% endif %}
 
     </div>
 
-    <footer>© 2025 Equi Brake Cape · Authorized EBC Brakes Reseller · South Africa</footer>
+    <footer>
+        2025 Equi Brake Cape · Authorized EBC Brakes Reseller · South Africa
+    </footer>
 
     <script>
-    // Updates the quantity of an item in the cart
-    function changeQty(partNumber, newQty) {
-        fetch('/api/cart/update', {
-            method  : 'PATCH',
-            headers : { 'Content-Type': 'application/json' },
-            body    : JSON.stringify({ part_number: partNumber, quantity: newQty })
-        })
-        .then(() => location.reload()); // Reload page to show updated totals
-    }
+        /*
+         * All cart interactions use event delegation.
+         * We listen for clicks on the whole document and check what was clicked.
+         * This is cleaner than putting onclick="" on every button.
+         */
+        document.addEventListener('DOMContentLoaded', function () {
 
-    // Removes an item from the cart completely
-    function removeItem(partNumber) {
-        fetch(`/api/cart/remove/${partNumber}`, { method: 'DELETE' })
-        .then(() => location.reload());
-    }
+            document.addEventListener('click', function (event) {
+                var btn    = event.target;
+                var action = btn.getAttribute('data-action');
+                var part   = btn.getAttribute('data-part');
+
+                if (!action || !part) return; // Clicked something else
+
+                if (action === 'increase') {
+                    var currentQty = parseInt(btn.getAttribute('data-qty'), 10);
+                    changeQty(part, currentQty + 1);
+                }
+
+                if (action === 'decrease') {
+                    var currentQty = parseInt(btn.getAttribute('data-qty'), 10);
+                    changeQty(part, currentQty - 1);
+                }
+
+                if (action === 'remove') {
+                    removeItem(part);
+                }
+            });
+
+        });
+
+        /* Updates the quantity of an item - reloads page to recalculate totals */
+        function changeQty(partNumber, newQty) {
+            fetch('/api/cart/update', {
+                method  : 'PATCH',
+                headers : { 'Content-Type': 'application/json' },
+                body    : JSON.stringify({
+                    part_number : partNumber,
+                    quantity    : newQty
+                })
+            })
+            .then(function () { location.reload(); });
+        }
+
+        /* Removes an item from the cart completely */
+        function removeItem(partNumber) {
+            fetch('/api/cart/remove/' + partNumber, { method: 'DELETE' })
+            .then(function () { location.reload(); });
+        }
     </script>
 
 </body>
