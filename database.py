@@ -2,9 +2,15 @@
 # database.py
 # =============================================================================
 # Creates the database and ALL tables.
-# Run this ONCE on a fresh start - it wipes and recreates all tables.
+# Run this ONCE on a fresh start — it wipes and recreates all tables.
 #
 # Command: python3 database.py
+#
+# PHASE 5 CHANGES (PayFast):
+#   - orders table has 2 new columns:
+#       payment_status     - tracks PayFast payment state
+#       payfast_payment_id - the ID PayFast gives us when payment completes
+#                           (sent in the ITN as 'pf_payment_id')
 # =============================================================================
 
 import sqlite3
@@ -97,40 +103,42 @@ def create_database():
     # -------------------------------------------------------------------------
     # TABLE 4: orders
     # One row per customer order.
+    #
+    # PHASE 5 COLUMNS:
+    #   payment_status     - tracks where we are in the payment process:
+    #                          "pending_payment" = order saved, waiting for PayFast
+    #                          "paid"            = PayFast ITN confirmed payment ✅
+    #                          "cancelled"       = customer cancelled on PayFast ❌
+    #                          "failed"          = payment failed on PayFast ⚠️
+    #   payfast_payment_id - PayFast's own payment ID (sent in the ITN as pf_payment_id)
+    #                        Useful for reconciling payments in your PayFast dashboard
     # -------------------------------------------------------------------------
     cursor.execute('''
         CREATE TABLE orders (
-            id                INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_number      TEXT    NOT NULL UNIQUE,
-            status            TEXT    DEFAULT 'pending',
-            customer_name     TEXT    NOT NULL,
-            customer_email    TEXT    NOT NULL,
-            customer_phone    TEXT,
-            delivery_address  TEXT    NOT NULL,
-            delivery_city     TEXT    NOT NULL,
-            delivery_province TEXT    NOT NULL,
-            delivery_postcode TEXT    NOT NULL,
-            order_notes       TEXT,
-            subtotal          REAL    NOT NULL,
-            vat_amount        REAL    NOT NULL,
-            delivery_fee      REAL    NOT NULL DEFAULT 0,
-            total_amount      REAL    NOT NULL,
-            created_at        TEXT    DEFAULT (datetime('now', 'localtime'))
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_number        TEXT    NOT NULL UNIQUE,
+            status              TEXT    DEFAULT 'pending',
+            payment_status      TEXT    DEFAULT 'pending_payment',
+            payfast_payment_id  TEXT,
+            customer_name       TEXT    NOT NULL,
+            customer_email      TEXT    NOT NULL,
+            customer_phone      TEXT,
+            delivery_address    TEXT    NOT NULL,
+            delivery_city       TEXT    NOT NULL,
+            delivery_province   TEXT    NOT NULL,
+            delivery_postcode   TEXT    NOT NULL,
+            order_notes         TEXT,
+            subtotal            REAL    NOT NULL,
+            vat_amount          REAL    NOT NULL,
+            delivery_fee        REAL    NOT NULL DEFAULT 0,
+            total_amount        REAL    NOT NULL,
+            created_at          TEXT    DEFAULT (datetime('now', 'localtime'))
         )
     ''')
-    # Column explanations:
-    # order_number     - Human readable e.g. "EBC-20250413-0001"
-    # status           - "pending", "confirmed", "shipped", "delivered", "cancelled"
-    # subtotal         - total before VAT
-    # vat_amount       - the VAT portion (15% in SA)
-    # delivery_fee     - shipping cost (we'll calculate this later)
-    # total_amount     - the final amount the customer pays
-    # created_at       - date and time the order was placed
 
     # -------------------------------------------------------------------------
     # TABLE 5: order_items
     # One row per product line within an order.
-    # e.g. An order for 2x brake pads and 1x disc = 2 rows here
     # -------------------------------------------------------------------------
     cursor.execute('''
         CREATE TABLE order_items (
@@ -145,13 +153,6 @@ def create_database():
             FOREIGN KEY (order_id) REFERENCES orders(id)
         )
     ''')
-    # Column explanations:
-    # order_id     - links to the orders table
-    # part_number  - the EBC part number e.g. "DP21074"
-    # product_type - description e.g. "EBC Greenstuff Front Pads"
-    # quantity     - how many the customer ordered
-    # unit_price   - price per unit at time of order (incl VAT)
-    # line_total   - quantity x unit_price
 
     connection.commit()
     connection.close()
@@ -160,7 +161,7 @@ def create_database():
     print("   - vehicles")
     print("   - products")
     print("   - vehicle_fitment")
-    print("   - orders")
+    print("   - orders  (+ payment_status + payfast_payment_id columns)")
     print("   - order_items")
     print("\nNext steps:")
     print("  1. python3 import_prices.py")

@@ -34,17 +34,13 @@
         .breadcrumb { font-size: 13px; color: var(--grey-light); margin-bottom: 40px; }
         .breadcrumb a { color: var(--orange); }
 
-        /* ---- Two column layout ---- */
-        .checkout-grid {
-            display: grid; grid-template-columns: 1fr 380px; gap: 40px; align-items: start;
-        }
+        .checkout-grid { display: grid; grid-template-columns: 1fr 380px; gap: 40px; align-items: start; }
         @media (max-width: 900px) {
             .checkout-grid { grid-template-columns: 1fr; }
             .page-wrap { padding: 90px 20px 60px; }
             nav { padding: 0 20px; }
         }
 
-        /* ---- Form ---- */
         .form-section { margin-bottom: 32px; }
         .form-section-title {
             font-family: var(--font-head); font-size: 20px; font-weight: 800;
@@ -57,10 +53,7 @@
         .form-group { display: flex; flex-direction: column; gap: 6px; }
         .form-group.full { grid-column: 1 / -1; }
 
-        label {
-            font-size: 11px; font-weight: 600; letter-spacing: 2px;
-            text-transform: uppercase; color: var(--grey-light);
-        }
+        label { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--grey-light); }
         label .required { color: var(--orange); }
 
         input, select, textarea {
@@ -71,14 +64,11 @@
         input:focus, select:focus, textarea:focus { outline: none; border-color: var(--orange); }
         input::placeholder, textarea::placeholder { color: var(--grey-mid); }
         textarea { resize: vertical; min-height: 80px; }
-
-        /* SA Provinces dropdown */
         select option { background: var(--black-card); }
 
-        /* ---- Order Summary Sidebar ---- */
         .order-sidebar {
-            background: var(--black-card); border: 1px solid var(--black-border); padding: 28px;
-            position: sticky; top: 90px; /* Sticks as you scroll */
+            background: var(--black-card); border: 1px solid var(--black-border);
+            padding: 28px; position: sticky; top: 90px;
         }
         .sidebar-title {
             font-family: var(--font-head); font-size: 20px; font-weight: 800;
@@ -100,20 +90,17 @@
         .summary-row.total { color: var(--white); font-family: var(--font-head); font-size: 22px; font-weight: 800; padding-top: 12px; }
         .summary-row.total span:last-child { color: var(--orange); }
 
-        /* ---- Submit button ---- */
-        .btn-place-order {
+        .btn-pay {
             width: 100%; padding: 18px; background: var(--orange); color: var(--black);
             border: none; font-family: var(--font-head); font-size: 20px; font-weight: 800;
             letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
             margin-top: 24px; transition: background 0.2s;
         }
-        .btn-place-order:hover { background: var(--orange-dark); color: var(--white); }
-        .btn-place-order:disabled { background: var(--grey-mid); cursor: not-allowed; }
+        .btn-pay:hover   { background: var(--orange-dark); color: var(--white); }
+        .btn-pay.loading { background: var(--grey-mid); pointer-events: none; cursor: not-allowed; }
 
-        .order-note { font-size: 12px; color: var(--grey-mid); text-align: center; margin-top: 12px; line-height: 1.5; }
-
-        /* Loading state */
-        .btn-place-order.loading { background: var(--grey-mid); pointer-events: none; }
+        .order-note  { font-size: 12px; color: var(--grey-mid); text-align: center; margin-top: 12px; line-height: 1.5; }
+        .secure-note { font-size: 11px; color: var(--grey-mid); text-align: center; margin-top: 8px; }
 
         footer { background: var(--black-card); border-top: 1px solid var(--black-border); padding: 32px 40px; text-align: center; font-size: 13px; color: var(--grey-mid); margin-top: 60px; }
     </style>
@@ -137,7 +124,6 @@
 
             <!-- Left: Customer details form -->
             <div>
-                <!-- Contact details -->
                 <div class="form-section">
                     <p class="form-section-title"><span>01</span> Contact Details</p>
                     <div class="form-grid">
@@ -156,7 +142,6 @@
                     </div>
                 </div>
 
-                <!-- Delivery address -->
                 <div class="form-section">
                     <p class="form-section-title"><span>02</span> Delivery Address</p>
                     <div class="form-grid">
@@ -190,7 +175,6 @@
                     </div>
                 </div>
 
-                <!-- Order notes -->
                 <div class="form-section">
                     <p class="form-section-title"><span>03</span> Order Notes <span style="font-size:14px;color:var(--grey-light);font-weight:400;">(optional)</span></p>
                     <div class="form-group">
@@ -198,7 +182,6 @@
                         <textarea id="order_notes" placeholder="e.g. Please call before delivery, gate code, etc."></textarea>
                     </div>
                 </div>
-
             </div>
 
             <!-- Right: Order summary sidebar -->
@@ -216,7 +199,6 @@
                 {% endfor %}
 
                 <hr class="summary-divider">
-
                 <div class="summary-row">
                     <span>Subtotal (incl. VAT)</span>
                     <span>{{ subtotal | currency }}</span>
@@ -234,13 +216,14 @@
                     <span>{{ total | currency }}</span>
                 </div>
 
-                <button class="btn-place-order" id="btn-order" onclick="placeOrder()">
-                    Place Order →
+                <button class="btn-pay" id="btn-pay" onclick="placeOrder()">
+                    Pay with PayFast →
                 </button>
                 <p class="order-note">
-                    By placing your order you agree to our terms.<br>
-                    You will receive a confirmation email.
+                    You will be redirected to PayFast's secure payment page.<br>
+                    Your card details are never stored on our servers.
                 </p>
+                <p class="secure-note">🔒 Payments processed by PayFast · PCI Compliant</p>
             </div>
 
         </div>
@@ -250,7 +233,10 @@
 
     <script>
     function placeOrder() {
-        // Collect all form values
+
+        // ------------------------------------------------------------------
+        // Step 1: Collect form values
+        // ------------------------------------------------------------------
         const name     = document.getElementById('customer_name').value.trim();
         const email    = document.getElementById('customer_email').value.trim();
         const phone    = document.getElementById('customer_phone').value.trim();
@@ -260,24 +246,32 @@
         const postcode = document.getElementById('delivery_postcode').value.trim();
         const notes    = document.getElementById('order_notes').value.trim();
 
-        // Validate required fields before sending
+        // ------------------------------------------------------------------
+        // Step 2: Validate required fields
+        // ------------------------------------------------------------------
         if (!name || !email || !address || !city || !province || !postcode) {
             alert('Please fill in all required fields marked with *');
             return;
         }
-
-        // Basic email format check
         if (!email.includes('@') || !email.includes('.')) {
             alert('Please enter a valid email address');
             return;
         }
 
-        // Disable button to prevent double-clicking
-        const btn = document.getElementById('btn-order');
-        btn.textContent = 'Placing Order...';
+        // ------------------------------------------------------------------
+        // Step 3: Disable button to prevent double-clicking
+        // ------------------------------------------------------------------
+        const btn      = document.getElementById('btn-pay');
+        btn.textContent = 'Creating Order...';
         btn.classList.add('loading');
 
-        // Send order to our API
+        // ------------------------------------------------------------------
+        // Step 4: Send order to our Flask server
+        // Flask will:
+        //   a) Save the order to the database
+        //   b) Build the PayFast form fields + security signature
+        //   c) Return those fields back to us as JSON
+        // ------------------------------------------------------------------
         fetch('/api/orders', {
             method  : 'POST',
             headers : { 'Content-Type': 'application/json' },
@@ -294,20 +288,50 @@
         })
         .then(response => response.json())
         .then(data => {
-            if (data.order_number) {
-                // Success - redirect to confirmation page
-                window.location.href = `/order/confirmation/${data.order_number}`;
+            if (data.payfast_url && data.form_data) {
+
+                btn.textContent = 'Redirecting to PayFast...';
+
+                // --------------------------------------------------------------
+                // Step 5: Build a hidden HTML form and submit it to PayFast
+                //
+                // Why a form instead of a normal redirect?
+                // PayFast needs all the order details and the security signature
+                // sent as POST data. A normal browser redirect (window.location)
+                // can only do GET requests. A form POST is the correct way.
+                //
+                // This is invisible to the customer — they just see the page
+                // change to PayFast's payment page.
+                // --------------------------------------------------------------
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = data.payfast_url;  // PayFast's URL
+
+                // Add each field from our server as a hidden input
+                // This is like filling in a form behind the scenes
+                Object.entries(data.form_data).forEach(([key, value]) => {
+                    const input   = document.createElement('input');
+                    input.type    = 'hidden';
+                    input.name    = key;
+                    input.value   = value;
+                    form.appendChild(input);
+                });
+
+                // Add the form to the page and submit it immediately
+                document.body.appendChild(form);
+                form.submit();  // ← This sends the customer to PayFast
+
             } else {
-                // API returned an error
+                // Something went wrong before reaching PayFast
                 alert(data.error || 'Something went wrong. Please try again.');
-                btn.textContent = 'Place Order →';
+                btn.textContent = 'Pay with PayFast →';
                 btn.classList.remove('loading');
             }
         })
         .catch(err => {
-            console.error('Order failed:', err);
-            alert('Could not place order. Please try again.');
-            btn.textContent = 'Place Order →';
+            console.error('Checkout error:', err);
+            alert('Could not connect to server. Please try again.');
+            btn.textContent = 'Pay with PayFast →';
             btn.classList.remove('loading');
         });
     }

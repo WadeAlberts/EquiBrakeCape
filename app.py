@@ -4,39 +4,59 @@
 # Main server - runs the website and all API endpoints.
 # Start: python3 app.py
 # Stop:  CTRL + C
+#
+# PHASE 5 CHANGES (PayFast):
+#   - Loads .env file for credentials
+#   - /api/orders now builds PayFast form data and returns it to the browser
+#   - /payfast/notify — PayFast calls this secretly after payment (ITN)
+#   - /payment/cancelled/<order_number> — customer cancelled on PayFast
 # =============================================================================
 
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, redirect
 import sqlite3
 import os
-import smtplib                          # Built into Python - sends emails
-from email.mime.text import MIMEText    # Formats the email content
-from datetime import datetime           # For generating order numbers
+import smtplib
+from email.mime.text import MIMEText
+from datetime import datetime
+from dotenv import load_dotenv                        # Reads our .env file
+from payfast_helper import (                          # Our PayFast helper
+    build_payfast_form_data,
+    verify_itn_signature
+)
+
+# ------------------------------------------------------------------------------
+# LOAD .env FILE
+# Must be called before anything reads os.environ.get()
+# ------------------------------------------------------------------------------
+load_dotenv()
+
 
 # ------------------------------------------------------------------------------
 # APP SETUP
 # ------------------------------------------------------------------------------
 
 app = Flask(__name__)
-
-# Secret key - Flask uses this to encrypt the session cookie (the cart)
-# In production this should be a long random string kept secret
-# For now this is fine for local development
-app.secret_key = 'equibrakecape-dev-secret-key-2025'
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'equibrakecape-dev-secret-key-2025')
 
 DATABASE = 'products.db'
 
+# The public-facing URL of this server.
+# PayFast needs this to send customers back after payment
+# and to send the ITN (payment notification).
+# Local testing: set this to your ngrok URL in .env
+BASE_URL = os.environ.get('BASE_URL', 'http://localhost:5000').rstrip('/')
+
+
 # ------------------------------------------------------------------------------
 # EMAIL CONFIGURATION
-# For local testing we send to Python's built-in debugging server.
-# To use it, open a second terminal and run:
+# For local testing, open a second terminal and run:
 #   python3 -m smtpd -n -c DebuggingServer localhost:1025
-# You will see emails printed there instead of actually being sent.
+# Emails will print there instead of being sent for real.
 # ------------------------------------------------------------------------------
-EMAIL_HOST     = 'localhost'
-EMAIL_PORT     = 1025
-EMAIL_FROM     = 'orders@equibrakecape.co.za'
-STORE_NAME     = 'Equi Brake Cape'
+EMAIL_HOST  = 'localhost'
+EMAIL_PORT  = 1025
+EMAIL_FROM  = 'orders@equibrakecape.co.za'
+STORE_NAME  = 'Equi Brake Cape'
 
 
 # ------------------------------------------------------------------------------
@@ -53,45 +73,36 @@ def get_db_connection():
 def format_currency(amount):
     """
     Formats a number as South African Rand.
-    e.g. 1250.50 becomes R1 250.50
-    The space is the SA thousands separator.
+    e.g. 1250.50 → R1 250.50
     """
     if amount is None:
         return 'R0.00'
-    # Format with comma first, then replace comma with space
     formatted = f"{amount:,.2f}".replace(',', ' ')
     return f"R{formatted}"
 
 
 def generate_order_number():
     """
-    Generates a unique order number based on date and a sequence.
-    e.g. EBC-20250413-0042
+    Generates a unique order number.
+    e.g. EBC-20250418-0001
     """
     today = datetime.now().strftime('%Y%m%d')
     conn  = get_db_connection()
-
-    # Count how many orders exist for today to generate the sequence number
     count = conn.execute(
         "SELECT COUNT(*) as c FROM orders WHERE order_number LIKE ?",
         (f'EBC-{today}-%',)
     ).fetchone()['c']
-
     conn.close()
-    # Pad the sequence number to 4 digits e.g. 0001, 0042
     return f"EBC-{today}-{str(count + 1).zfill(4)}"
 
 
 def send_order_email(order, items):
     """
-    Sends an order confirmation email to the customer.
-    During development this prints to the smtpd debugging server terminal.
-
-    order - the order dictionary
-    items - list of order item dictionaries
+    Sends a payment confirmation email to the customer.
+    Called from /payfast/notify AFTER PayFast confirms payment.
+    During development this prints to the smtpd debug terminal.
     """
     try:
-        # Build the email body as plain text
         items_text = "\n".join([
             f"  {item['part_number']} x{item['quantity']} — {format_currency(item['line_total'])}"
             for item in items
@@ -100,13 +111,13 @@ def send_order_email(order, items):
         body = f"""
 Dear {order['customer_name']},
 
-Thank you for your order with {STORE_NAME}!
+Great news — your payment has been confirmed and your order is on its way!
 
 ORDER DETAILS
 =============
 Order Number : {order['order_number']}
 Date         : {order['created_at']}
-Status       : Order Received
+Status       : Payment Confirmed ✅
 
 ITEMS ORDERED
 =============
@@ -117,7 +128,7 @@ ORDER TOTAL
 Subtotal     : {format_currency(order['subtotal'])}
 VAT (15%)    : {format_currency(order['vat_amount'])}
 Delivery     : {format_currency(order['delivery_fee'])}
-TOTAL        : {format_currency(order['total_amount'])}
+TOTAL PAID   : {format_currency(order['total_amount'])}
 
 DELIVERY ADDRESS
 ================
@@ -125,7 +136,7 @@ DELIVERY ADDRESS
 {order['delivery_address']}
 {order['delivery_city']}, {order['delivery_province']} {order['delivery_postcode']}
 
-We will be in touch shortly to confirm your order and provide delivery details.
+We will be in touch shortly with your delivery details.
 
 Thank you for choosing {STORE_NAME}!
 
@@ -134,29 +145,24 @@ Thank you for choosing {STORE_NAME}!
 Authorized EBC Brakes Reseller · South Africa
         """.strip()
 
-        # Create the email message object
         msg            = MIMEText(body)
-        msg['Subject'] = f"Order Confirmation — {order['order_number']}"
+        msg['Subject'] = f"Payment Confirmed — {order['order_number']}"
         msg['From']    = EMAIL_FROM
         msg['To']      = order['customer_email']
 
-        # Connect to the email server and send
-        # During development this goes to the smtpd debugging server
         with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
             server.sendmail(EMAIL_FROM, [order['customer_email']], msg.as_string())
 
-        print(f"📧 Email sent to {order['customer_email']}")
+        print(f"📧 Confirmation email sent to {order['customer_email']}")
 
     except Exception as e:
-        # If email fails, just log it - don't crash the order
         print(f"⚠️  Email could not be sent: {e}")
-        print("   (This is normal if the smtpd debugging server is not running)")
+        print("   (Normal if smtpd debug server is not running)")
 
 
 # ==============================================================================
 # JINJA2 CUSTOM FILTERS
-# These let us use format_currency directly in our HTML templates
-# e.g. {{ 1250.00 | currency }}
+# Lets us use {{ 1250.00 | currency }} in HTML templates
 # ==============================================================================
 
 @app.template_filter('currency')
@@ -177,8 +183,8 @@ def home():
 @app.route('/results')
 def results():
     """
-    Results page - shows all parts that fit a searched vehicle.
-    URL example: /results?make=Toyota&model=Corolla&year=2018
+    Results page — shows all parts that fit a searched vehicle.
+    URL: /results?make=Toyota&model=Corolla&year=2018
     """
     make   = request.args.get('make',   '').strip()
     model  = request.args.get('model',  '').strip()
@@ -192,22 +198,13 @@ def results():
 
     sql = '''
         SELECT DISTINCT
-            p.part_number,
-            p.category,
-            p.srp_incl_vat,
-            p.srp_excl_vat,
-            vf.product_type,
-            vf.position,
-            v.make,
-            v.model,
-            v.sub_model,
-            v.year,
-            v.engine
+            p.part_number, p.category, p.srp_incl_vat, p.srp_excl_vat,
+            vf.product_type, vf.position,
+            v.make, v.model, v.sub_model, v.year, v.engine
         FROM vehicle_fitment vf
         JOIN vehicles v ON vf.vehicle_id  = v.id
         JOIN products  p ON vf.part_number = p.part_number
-        WHERE v.make  = ?
-          AND v.model = ?
+        WHERE v.make  = ? AND v.model = ?
     '''
     params = [make, model]
 
@@ -222,10 +219,8 @@ def results():
 
     parts      = conn.execute(sql, params).fetchall()
     conn.close()
-
     parts_list = [dict(row) for row in parts]
 
-    # Group parts by category for display
     grouped = {}
     for part in parts_list:
         cat = part['category'] or 'Other'
@@ -233,10 +228,7 @@ def results():
             grouped[cat] = []
         grouped[cat].append(part)
 
-    # Pass current cart count to show in nav
-    cart_count = sum(
-        item['quantity'] for item in session.get('cart', {}).values()
-    )
+    cart_count = sum(item['quantity'] for item in session.get('cart', {}).values())
 
     return render_template('results.html',
         grouped_parts = grouped,
@@ -251,42 +243,25 @@ def results():
 
 @app.route('/cart')
 def cart_page():
-    """
-    The shopping cart page.
-    Shows all items the customer has added, with quantities and totals.
-    """
+    """Shopping cart page."""
     cart  = session.get('cart', {})
     items = list(cart.values())
 
-    # Calculate totals
-    # In SA, VAT is 15%
-    # srp_incl_vat already includes VAT so we work backwards
     subtotal   = sum(item['unit_price'] * item['quantity'] for item in items)
-    # VAT portion = total - (total / 1.15)
     vat_amount = round(subtotal - (subtotal / 1.15), 2)
-    # For now delivery is free - we'll add delivery calculation later
     delivery   = 0.00
     total      = round(subtotal + delivery, 2)
 
     return render_template('cart.html',
-        items      = items,
-        subtotal   = subtotal,
-        vat_amount = vat_amount,
-        delivery   = delivery,
-        total      = total,
-        cart_count = len(items)
+        items=items, subtotal=subtotal, vat_amount=vat_amount,
+        delivery=delivery, total=total, cart_count=len(items)
     )
 
 
 @app.route('/checkout')
 def checkout_page():
-    """
-    The checkout page.
-    Customer fills in their delivery details here.
-    """
+    """Checkout page — customer fills in delivery details."""
     cart = session.get('cart', {})
-
-    # If cart is empty, send them back to home
     if not cart:
         return render_template('index.html')
 
@@ -297,19 +272,19 @@ def checkout_page():
     total      = round(subtotal + delivery, 2)
 
     return render_template('checkout.html',
-        items      = items,
-        subtotal   = subtotal,
-        vat_amount = vat_amount,
-        delivery   = delivery,
-        total      = total,
-        cart_count = len(items)
+        items=items, subtotal=subtotal, vat_amount=vat_amount,
+        delivery=delivery, total=total, cart_count=len(items)
     )
 
 
 @app.route('/order/confirmation/<order_number>')
 def order_confirmation(order_number):
     """
-    Order confirmation page shown after a successful checkout.
+    Confirmation page — shown after PayFast redirects the customer back.
+    The payment_status column tells the page what to display:
+      paid            → success message ✅
+      pending_payment → waiting for PayFast to confirm ⏳
+      cancelled       → customer cancelled ❌
     """
     conn  = get_db_connection()
     order = conn.execute(
@@ -318,12 +293,11 @@ def order_confirmation(order_number):
 
     if order is None:
         conn.close()
-        return render_template('index.html')
+        return redirect('/')
 
     items = conn.execute(
         'SELECT * FROM order_items WHERE order_id = ?', (order['id'],)
     ).fetchall()
-
     conn.close()
 
     return render_template('order_confirmation.html',
@@ -333,148 +307,270 @@ def order_confirmation(order_number):
 
 
 # ==============================================================================
+# PAYFAST PAYMENT ROUTES  ← NEW IN PHASE 5
+# ==============================================================================
+
+@app.route('/payfast/notify', methods=['POST'])
+def payfast_notify():
+    """
+    POST /payfast/notify
+    ====================
+    PayFast calls this URL secretly after a payment is completed.
+    This is called an ITN — Instant Transaction Notification.
+
+    Think of it like PayFast sending you a text message saying:
+    "Hey, order EBC-20250418-0001 was just paid — R1,250.00 received."
+
+    This is the ONLY reliable way to confirm payment.
+    Never trust the return_url redirect alone — customers can
+    manually type any URL and fake a success page visit.
+    This ITN comes directly from PayFast's servers.
+
+    IMPORTANT FOR LOCAL TESTING:
+    PayFast needs to reach this URL over the internet.
+    Use ngrok: ngrok http 5000
+    Then set BASE_URL in .env to your ngrok URL.
+    """
+    # Get all the fields PayFast sent us
+    # PayFast sends a form POST (not JSON), so we use request.form
+    post_data = request.form.to_dict()
+
+    print(f"📬 PayFast ITN received: {post_data.get('payment_status')} | Order: {post_data.get('m_payment_id')}")
+
+    # -------------------------------------------------------------------------
+    # STEP 1: Verify the signature
+    # This proves the notification genuinely came from PayFast
+    # -------------------------------------------------------------------------
+    passphrase = os.environ.get('PAYFAST_PASSPHRASE', '')
+    if not verify_itn_signature(post_data, passphrase):
+        print("❌ PayFast ITN: Signature verification FAILED — ignoring")
+        # Return 200 so PayFast stops retrying, but we don't process it
+        return 'OK', 200
+
+    # -------------------------------------------------------------------------
+    # STEP 2: Check the payment status
+    # PayFast sends payment_status = "COMPLETE" for successful payments
+    # Other values: "FAILED", "PENDING"
+    # -------------------------------------------------------------------------
+    payment_status   = post_data.get('payment_status', '').upper()
+    order_number     = post_data.get('m_payment_id', '')   # Our order number we sent to PayFast
+    pf_payment_id    = post_data.get('pf_payment_id', '')  # PayFast's own payment ID
+    amount_gross     = post_data.get('amount_gross', '0')  # Amount PayFast received
+
+    if not order_number:
+        print("⚠️  ITN: No m_payment_id in PayFast notification")
+        return 'OK', 200
+
+    conn = get_db_connection()
+
+    # Find the order in our database
+    order = conn.execute(
+        'SELECT * FROM orders WHERE order_number = ?', (order_number,)
+    ).fetchone()
+
+    if not order:
+        print(f"⚠️  ITN: No order found for order number: {order_number}")
+        conn.close()
+        return 'OK', 200
+
+    # -------------------------------------------------------------------------
+    # STEP 3: Verify the amount matches what we expected
+    # This prevents someone from paying R1 for a R1,250 order
+    # -------------------------------------------------------------------------
+    try:
+        received_amount = float(amount_gross)
+        expected_amount = float(order['total_amount'])
+        # Allow 1 cent tolerance for floating point rounding
+        if abs(received_amount - expected_amount) > 0.01:
+            print(f"❌ ITN: Amount mismatch! Expected R{expected_amount:.2f}, received R{received_amount:.2f}")
+            conn.close()
+            return 'OK', 200
+    except ValueError:
+        print(f"⚠️  ITN: Could not parse amount: {amount_gross}")
+
+    # -------------------------------------------------------------------------
+    # STEP 4: Update our order based on PayFast's payment_status
+    # -------------------------------------------------------------------------
+    if payment_status == 'COMPLETE':
+        # Payment successful! Mark order as paid ✅
+        conn.execute('''
+            UPDATE orders
+            SET payment_status    = 'paid',
+                status            = 'confirmed',
+                payfast_payment_id = ?
+            WHERE order_number = ?
+        ''', (pf_payment_id, order_number))
+        conn.commit()
+
+        # Get order items for the confirmation email
+        items = conn.execute(
+            'SELECT * FROM order_items WHERE order_id = ?', (order['id'],)
+        ).fetchall()
+
+        # Build updated order dict for the email
+        order_dict                     = dict(order)
+        order_dict['payment_status']   = 'paid'
+        order_dict['status']           = 'confirmed'
+
+        print(f"✅ Payment confirmed for order {order_number} | PayFast ID: {pf_payment_id}")
+
+        # Send the customer their confirmation email now that payment is confirmed
+        send_order_email(order_dict, [dict(i) for i in items])
+
+    elif payment_status == 'FAILED':
+        conn.execute('''
+            UPDATE orders
+            SET payment_status = 'failed', status = 'cancelled'
+            WHERE order_number = ?
+        ''', (order_number,))
+        conn.commit()
+        print(f"❌ Payment FAILED for order {order_number}")
+
+    elif payment_status == 'PENDING':
+        # Pending means EFT was chosen — we wait for bank to clear
+        conn.execute('''
+            UPDATE orders
+            SET payment_status = 'pending_payment'
+            WHERE order_number = ?
+        ''', (order_number,))
+        conn.commit()
+        print(f"⏳ Payment PENDING (likely EFT) for order {order_number}")
+
+    conn.close()
+
+    # IMPORTANT: Always return a plain "OK" with HTTP 200
+    # If we return anything else, PayFast will keep retrying the ITN
+    return 'OK', 200
+
+
+@app.route('/payment/cancelled/<order_number>')
+def payment_cancelled(order_number):
+    """
+    GET /payment/cancelled/<order_number>
+    ======================================
+    PayFast redirects the customer here if they click Cancel.
+    We update the order and show the confirmation page with a
+    "Payment Cancelled" message.
+    """
+    conn = get_db_connection()
+    conn.execute('''
+        UPDATE orders
+        SET payment_status = 'cancelled', status = 'cancelled'
+        WHERE order_number = ?
+    ''', (order_number,))
+    conn.commit()
+
+    order = conn.execute(
+        'SELECT * FROM orders WHERE order_number = ?', (order_number,)
+    ).fetchone()
+
+    items = []
+    if order:
+        items = conn.execute(
+            'SELECT * FROM order_items WHERE order_id = ?', (order['id'],)
+        ).fetchall()
+
+    conn.close()
+
+    if not order:
+        return redirect('/')
+
+    print(f"❌ Payment cancelled for order {order_number}")
+
+    return render_template('order_confirmation.html',
+        order = dict(order),
+        items = [dict(i) for i in items]
+    )
+
+
+# ==============================================================================
 # API ROUTES — CART
-# The cart lives in the Flask session (a cookie on the customer's browser).
-# Each item in the cart is stored as a dictionary keyed by part_number.
 # ==============================================================================
 
 @app.route('/api/cart', methods=['GET'])
 def get_cart():
-    """
-    GET /api/cart
-    Returns the current contents of the cart.
-    """
+    """GET /api/cart — Returns the current cart contents."""
     cart  = session.get('cart', {})
     items = list(cart.values())
     total = sum(item['unit_price'] * item['quantity'] for item in items)
-    return jsonify({
-        'items'      : items,
-        'item_count' : len(items),
-        'total'      : round(total, 2)
-    }), 200
+    return jsonify({'items': items, 'item_count': len(items), 'total': round(total, 2)}), 200
 
 
 @app.route('/api/cart/add', methods=['POST'])
 def add_to_cart():
-    """
-    POST /api/cart/add
-    Adds a product to the cart, or increases its quantity if already there.
-
-    Expected JSON:
-    {
-        "part_number"  : "DP21074",
-        "product_type" : "EBC Greenstuff Front Pads",
-        "unit_price"   : 850.00,
-        "quantity"     : 1
-    }
-    """
+    """POST /api/cart/add — Adds an item to the cart."""
     data = request.get_json()
 
-    # Validate required fields
-    required = ['part_number', 'product_type', 'unit_price']
-    for field in required:
+    for field in ['part_number', 'product_type', 'unit_price']:
         if field not in data:
             return jsonify({'error': f'Missing field: {field}'}), 400
 
     part_number  = data['part_number']
-    product_type = data['product_type']
     unit_price   = float(data['unit_price'])
     quantity     = int(data.get('quantity', 1))
-
-    # Get the cart from session, or start a new empty one
-    cart = session.get('cart', {})
+    cart         = session.get('cart', {})
 
     if part_number in cart:
-        # Already in cart - just increase the quantity
         cart[part_number]['quantity'] += quantity
     else:
-        # New item - add it
         cart[part_number] = {
             'part_number' : part_number,
-            'product_type': product_type,
+            'product_type': data['product_type'],
             'unit_price'  : unit_price,
             'quantity'    : quantity,
             'line_total'  : round(unit_price * quantity, 2)
         }
 
-    # Recalculate line total
     cart[part_number]['line_total'] = round(
         cart[part_number]['unit_price'] * cart[part_number]['quantity'], 2
     )
 
-    # Save the updated cart back to the session
-    session['cart']    = cart
-    session.modified   = True  # Tell Flask the session has changed
-
-    cart_count = sum(item['quantity'] for item in cart.values())
+    session['cart']  = cart
+    session.modified = True
 
     return jsonify({
-        'message'    : f'{part_number} added to cart!',
-        'cart_count' : cart_count
+        'message'    : f"{part_number} added to cart!",
+        'cart_count' : sum(item['quantity'] for item in cart.values())
     }), 200
 
 
 @app.route('/api/cart/update', methods=['PATCH'])
 def update_cart():
-    """
-    PATCH /api/cart/update
-    Updates the quantity of an item already in the cart.
-
-    Expected JSON:
-    {
-        "part_number" : "DP21074",
-        "quantity"    : 2
-    }
-    """
+    """PATCH /api/cart/update — Updates the quantity of a cart item."""
     data        = request.get_json()
     part_number = data.get('part_number')
     quantity    = int(data.get('quantity', 1))
-
-    cart = session.get('cart', {})
+    cart        = session.get('cart', {})
 
     if part_number not in cart:
         return jsonify({'error': 'Item not found in cart'}), 404
 
     if quantity <= 0:
-        # If quantity is set to 0 or less, remove the item
         del cart[part_number]
     else:
         cart[part_number]['quantity']   = quantity
-        cart[part_number]['line_total'] = round(
-            cart[part_number]['unit_price'] * quantity, 2
-        )
+        cart[part_number]['line_total'] = round(cart[part_number]['unit_price'] * quantity, 2)
 
     session['cart']  = cart
     session.modified = True
-
     return jsonify({'message': 'Cart updated!'}), 200
 
 
 @app.route('/api/cart/remove/<part_number>', methods=['DELETE'])
 def remove_from_cart(part_number):
-    """
-    DELETE /api/cart/remove/DP21074
-    Removes a single item from the cart completely.
-    """
+    """DELETE /api/cart/remove/DP21074 — Removes one item from the cart."""
     cart = session.get('cart', {})
-
     if part_number not in cart:
         return jsonify({'error': 'Item not in cart'}), 404
-
     del cart[part_number]
     session['cart']  = cart
     session.modified = True
-
     return jsonify({'message': f'{part_number} removed from cart'}), 200
 
 
 @app.route('/api/cart/clear', methods=['DELETE'])
 def clear_cart():
-    """
-    DELETE /api/cart/clear
-    Empties the entire cart.
-    Called after a successful order is placed.
-    """
+    """DELETE /api/cart/clear — Empties the entire cart."""
     session.pop('cart', None)
     return jsonify({'message': 'Cart cleared'}), 200
 
@@ -487,9 +583,19 @@ def clear_cart():
 def create_order():
     """
     POST /api/orders
-    Creates a new order from the current cart + customer details.
+    ================
+    PHASE 5 UPDATED FLOW:
+      1. Validates the customer's form fields
+      2. Calculates order totals
+      3. Saves the order to our database (payment_status = 'pending_payment')
+      4. Builds the PayFast form data (all fields + security signature)
+      5. Returns the PayFast URL + form fields to the browser
+      6. The browser's JavaScript builds a hidden form and submits it to PayFast
+      7. The customer pays on PayFast's hosted page
+      8. PayFast calls /payfast/notify (ITN) to confirm payment
+      9. PayFast redirects customer to /order/confirmation/<order_number>
 
-    Expected JSON (customer details from checkout form):
+    Expected JSON (from checkout.html):
     {
         "customer_name"     : "John Smith",
         "customer_email"    : "john@example.com",
@@ -504,11 +610,9 @@ def create_order():
     data = request.get_json()
     cart = session.get('cart', {})
 
-    # Can't place an order with an empty cart
     if not cart:
         return jsonify({'error': 'Your cart is empty'}), 400
 
-    # Validate required customer fields
     required = [
         'customer_name', 'customer_email',
         'delivery_address', 'delivery_city',
@@ -518,56 +622,57 @@ def create_order():
         if not data.get(field, '').strip():
             return jsonify({'error': f'Missing required field: {field}'}), 400
 
-    # Calculate order totals
     items      = list(cart.values())
-    subtotal   = sum(item['unit_price'] * item['quantity'] for item in items)
-    subtotal   = round(subtotal, 2)
+    subtotal   = round(sum(item['unit_price'] * item['quantity'] for item in items), 2)
     vat_amount = round(subtotal - (subtotal / 1.15), 2)
     delivery   = 0.00
     total      = round(subtotal + delivery, 2)
 
-    # Generate a unique order number
     order_number = generate_order_number()
 
     conn = get_db_connection()
     try:
-        # Insert the order record
+        # -----------------------------------------------------------------
+        # STEP 1: Save order to database
+        # payment_status starts as 'pending_payment'
+        # It will be updated to 'paid' when PayFast sends the ITN
+        # -----------------------------------------------------------------
         cursor = conn.execute('''
             INSERT INTO orders (
-                order_number, customer_name, customer_email, customer_phone,
+                order_number, status, payment_status,
+                customer_name, customer_email, customer_phone,
                 delivery_address, delivery_city, delivery_province,
                 delivery_postcode, order_notes,
                 subtotal, vat_amount, delivery_fee, total_amount
             ) VALUES (
-                :order_number, :customer_name, :customer_email, :customer_phone,
+                :order_number, 'pending', 'pending_payment',
+                :customer_name, :customer_email, :customer_phone,
                 :delivery_address, :delivery_city, :delivery_province,
                 :delivery_postcode, :order_notes,
                 :subtotal, :vat_amount, :delivery_fee, :total_amount
             )
         ''', {
-            'order_number'    : order_number,
-            'customer_name'   : data['customer_name'].strip(),
-            'customer_email'  : data['customer_email'].strip(),
-            'customer_phone'  : data.get('customer_phone', '').strip(),
-            'delivery_address': data['delivery_address'].strip(),
-            'delivery_city'   : data['delivery_city'].strip(),
+            'order_number'     : order_number,
+            'customer_name'    : data['customer_name'].strip(),
+            'customer_email'   : data['customer_email'].strip(),
+            'customer_phone'   : data.get('customer_phone', '').strip(),
+            'delivery_address' : data['delivery_address'].strip(),
+            'delivery_city'    : data['delivery_city'].strip(),
             'delivery_province': data['delivery_province'].strip(),
             'delivery_postcode': data['delivery_postcode'].strip(),
-            'order_notes'     : data.get('order_notes', '').strip(),
-            'subtotal'        : subtotal,
-            'vat_amount'      : vat_amount,
-            'delivery_fee'    : delivery,
-            'total_amount'    : total
+            'order_notes'      : data.get('order_notes', '').strip(),
+            'subtotal'         : subtotal,
+            'vat_amount'       : vat_amount,
+            'delivery_fee'     : delivery,
+            'total_amount'     : total
         })
 
         order_id = cursor.lastrowid
 
-        # Insert each cart item as an order line
+        # Save all cart items as order lines
         for item in items:
             line_total = round(item['unit_price'] * item['quantity'], 2)
-
-            # Look up the category for this part
-            product = conn.execute(
+            product    = conn.execute(
                 'SELECT category FROM products WHERE part_number = ?',
                 (item['part_number'],)
             ).fetchone()
@@ -579,78 +684,71 @@ def create_order():
                      quantity, unit_price, line_total)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (
-                order_id,
-                item['part_number'],
-                item['product_type'],
-                category,
-                item['quantity'],
-                item['unit_price'],
-                line_total
+                order_id, item['part_number'], item['product_type'],
+                category, item['quantity'], item['unit_price'], line_total
             ))
 
         conn.commit()
-
-        # Get the full order back so we can send the email
-        order = dict(conn.execute(
-            'SELECT * FROM orders WHERE id = ?', (order_id,)
-        ).fetchone())
-
         conn.close()
 
-        # Send confirmation email (goes to smtpd debug server locally)
-        send_order_email(order, items)
+        print(f"💾 Order {order_number} saved (awaiting PayFast payment)")
 
-        # Clear the cart now that the order is placed
+        # -----------------------------------------------------------------
+        # STEP 2: Build the PayFast payment form data
+        # This creates all the fields PayFast needs + the security signature
+        # -----------------------------------------------------------------
+        payfast_data = build_payfast_form_data(
+            order_number   = order_number,
+            total_amount   = total,
+            customer_name  = data['customer_name'].strip(),
+            customer_email = data['customer_email'].strip(),
+            base_url       = BASE_URL
+        )
+
+        # Clear the cart — the order is now saved in our database
         session.pop('cart', None)
 
-        print(f"✅ Order {order_number} created successfully!")
+        print(f"✅ Order {order_number} ready — sending customer to PayFast")
 
+        # Return the PayFast URL and form fields to the browser.
+        # The JavaScript in checkout.html will build a hidden form
+        # and submit it — redirecting the customer to PayFast's payment page.
         return jsonify({
-            'message'      : 'Order placed successfully!',
-            'order_number' : order_number
+            'message'      : 'Order created! Redirecting to PayFast...',
+            'order_number' : order_number,
+            'payfast_url'  : payfast_data['payfast_url'],   # PayFast's URL
+            'form_data'    : payfast_data['form_data']       # All the hidden form fields
         }), 201
 
     except Exception as e:
         conn.close()
         print(f"❌ Order creation failed: {e}")
-        return jsonify({'error': 'Order could not be created. Please try again.'}), 500
+        return jsonify({'error': f'Order could not be created: {str(e)}'}), 500
 
 
 @app.route('/api/orders', methods=['GET'])
 def get_all_orders():
-    """
-    GET /api/orders
-    Returns all orders. For admin use.
-    """
+    """GET /api/orders — Returns all orders. For admin use."""
     conn   = get_db_connection()
-    orders = conn.execute(
-        'SELECT * FROM orders ORDER BY created_at DESC'
-    ).fetchall()
+    orders = conn.execute('SELECT * FROM orders ORDER BY created_at DESC').fetchall()
     conn.close()
     return jsonify([dict(row) for row in orders]), 200
 
 
 @app.route('/api/orders/<order_number>', methods=['GET'])
 def get_order(order_number):
-    """
-    GET /api/orders/EBC-20250413-0001
-    Returns a single order with all its items.
-    """
+    """GET /api/orders/EBC-20250418-0001 — Returns one order with items."""
     conn  = get_db_connection()
     order = conn.execute(
         'SELECT * FROM orders WHERE order_number = ?', (order_number,)
     ).fetchone()
-
     if order is None:
         conn.close()
         return jsonify({'error': 'Order not found'}), 404
-
-    items = conn.execute(
+    items           = conn.execute(
         'SELECT * FROM order_items WHERE order_id = ?', (order['id'],)
     ).fetchall()
-
     conn.close()
-
     result          = dict(order)
     result['items'] = [dict(i) for i in items]
     return jsonify(result), 200
@@ -662,10 +760,8 @@ def get_order(order_number):
 
 @app.route('/api/makes', methods=['GET'])
 def get_makes():
-    conn  = get_db_connection()
-    rows  = conn.execute(
-        'SELECT DISTINCT make FROM vehicles WHERE make IS NOT NULL ORDER BY make'
-    ).fetchall()
+    conn = get_db_connection()
+    rows = conn.execute('SELECT DISTINCT make FROM vehicles WHERE make IS NOT NULL ORDER BY make').fetchall()
     conn.close()
     return jsonify([row['make'] for row in rows]), 200
 
@@ -677,8 +773,7 @@ def get_models():
         return jsonify({'error': 'make is required'}), 400
     conn = get_db_connection()
     rows = conn.execute(
-        'SELECT DISTINCT model FROM vehicles WHERE make = ? AND model IS NOT NULL ORDER BY model',
-        (make,)
+        'SELECT DISTINCT model FROM vehicles WHERE make = ? AND model IS NOT NULL ORDER BY model', (make,)
     ).fetchall()
     conn.close()
     return jsonify([row['model'] for row in rows]), 200
@@ -744,9 +839,7 @@ def get_all_products():
             'SELECT * FROM products WHERE category = ? ORDER BY part_number', (category,)
         ).fetchall()
     else:
-        products = conn.execute(
-            'SELECT * FROM products ORDER BY part_number'
-        ).fetchall()
+        products = conn.execute('SELECT * FROM products ORDER BY part_number').fetchall()
     conn.close()
     return jsonify([dict(row) for row in products]), 200
 
@@ -754,32 +847,26 @@ def get_all_products():
 @app.route('/api/products/<part_number>', methods=['GET'])
 def get_product(part_number):
     conn    = get_db_connection()
-    product = conn.execute(
-        'SELECT * FROM products WHERE part_number = ?', (part_number,)
-    ).fetchone()
+    product = conn.execute('SELECT * FROM products WHERE part_number = ?', (part_number,)).fetchone()
     if product is None:
         conn.close()
         return jsonify({'error': f'Product {part_number} not found'}), 404
     fitments = conn.execute(
         '''SELECT v.make, v.model, v.sub_model, v.year, v.engine, vf.position
-           FROM vehicle_fitment vf
-           JOIN vehicles v ON vf.vehicle_id = v.id
-           WHERE vf.part_number = ?
-           ORDER BY v.make, v.model, v.year''',
+           FROM vehicle_fitment vf JOIN vehicles v ON vf.vehicle_id = v.id
+           WHERE vf.part_number = ? ORDER BY v.make, v.model, v.year''',
         (part_number,)
     ).fetchall()
     conn.close()
-    result           = dict(product)
-    result['fits']   = [dict(row) for row in fitments]
+    result         = dict(product)
+    result['fits'] = [dict(row) for row in fitments]
     return jsonify(result), 200
 
 
 @app.route('/api/products/<part_number>', methods=['PATCH'])
 def update_product(part_number):
     conn     = get_db_connection()
-    existing = conn.execute(
-        'SELECT * FROM products WHERE part_number = ?', (part_number,)
-    ).fetchone()
+    existing = conn.execute('SELECT * FROM products WHERE part_number = ?', (part_number,)).fetchone()
     if existing is None:
         conn.close()
         return jsonify({'error': f'Product {part_number} not found'}), 404
@@ -805,9 +892,7 @@ def update_product(part_number):
 @app.route('/api/products/<part_number>', methods=['DELETE'])
 def delete_product(part_number):
     conn     = get_db_connection()
-    existing = conn.execute(
-        'SELECT * FROM products WHERE part_number = ?', (part_number,)
-    ).fetchone()
+    existing = conn.execute('SELECT * FROM products WHERE part_number = ?', (part_number,)).fetchone()
     if existing is None:
         conn.close()
         return jsonify({'error': f'Product {part_number} not found'}), 404
@@ -826,10 +911,16 @@ if __name__ == '__main__':
         print("⚠️  Database not found! Run: python3 database.py")
     else:
         print("✅ Database found!")
-        print(f"🚀 Starting {STORE_NAME} server...")
-        print("🌐 Store    : http://localhost:5000")
-        print("🛒 Cart     : http://localhost:5000/cart")
-        print("📦 API      : http://localhost:5000/api/products")
-        print("⛔ Stop     : CTRL + C\n")
+
+    sandbox = os.environ.get('PAYFAST_SANDBOX', 'true').lower() == 'true'
+    mode    = "SANDBOX (Test) 🧪" if sandbox else "LIVE 🔴 — REAL MONEY!"
+    print(f"💳 PayFast : {mode}")
+    print(f"🌐 Base URL: {BASE_URL}")
+    print(f"🚀 Starting {STORE_NAME} server...")
+    print("🌐 Store   : http://localhost:5000")
+    print("🛒 Cart    : http://localhost:5000/cart")
+    print("📦 API     : http://localhost:5000/api/products")
+    print("🔔 ITN     : http://localhost:5000/payfast/notify")
+    print("⛔ Stop    : CTRL + C\n")
 
     app.run(debug=True, port=5000)

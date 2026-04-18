@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Confirmed | Equi Brake Cape</title>
+    <title>Order | Equi Brake Cape</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -11,7 +11,7 @@
             --orange: #FF6200; --orange-dark: #CC4E00;
             --black: #0D0D0D; --black-card: #161616; --black-border: #2A2A2A;
             --white: #FFFFFF; --grey-light: #AAAAAA; --grey-mid: #555555;
-            --green: #22c55e;
+            --green: #22c55e; --yellow: #eab308; --red: #ef4444;
             --font-head: 'Barlow Condensed', sans-serif; --font-body: 'DM Sans', sans-serif;
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,26 +31,38 @@
 
         .page-wrap { max-width: 760px; margin: 0 auto; padding: 100px 40px 80px; }
 
-        /* ---- Success header ---- */
-        .success-header { text-align: center; padding: 48px 0 40px; }
-        .success-icon {
-            width: 72px; height: 72px; background: var(--green);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        .status-header { text-align: center; padding: 48px 0 40px; }
+        .status-icon {
+            width: 72px; height: 72px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
             font-size: 36px; margin: 0 auto 24px;
             animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
+        .status-icon.paid      { background: var(--green); }
+        .status-icon.pending   { background: var(--yellow); }
+        .status-icon.cancelled { background: var(--grey-mid); }
+        .status-icon.failed    { background: var(--red); }
         @keyframes popIn {
             from { transform: scale(0); opacity: 0; }
             to   { transform: scale(1); opacity: 1; }
         }
-        .success-title {
-            font-family: var(--font-head); font-size: clamp(36px, 6vw, 64px);
-            font-weight: 800; text-transform: uppercase;
-        }
-        .success-title em { font-style: normal; color: var(--green); }
-        .success-sub { font-size: 16px; color: var(--grey-light); margin-top: 12px; }
+        .status-title { font-family: var(--font-head); font-size: clamp(36px, 6vw, 64px); font-weight: 800; text-transform: uppercase; }
+        .status-title .c-green  { color: var(--green); }
+        .status-title .c-yellow { color: var(--yellow); }
+        .status-title .c-grey   { color: var(--grey-light); }
+        .status-title .c-red    { color: var(--red); }
+        .status-sub { font-size: 16px; color: var(--grey-light); margin-top: 12px; line-height: 1.6; }
 
-        /* ---- Order number box ---- */
+        .status-banner {
+            padding: 16px 20px; margin: 0 0 24px;
+            font-size: 14px; font-weight: 500;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .status-banner.paid      { background: rgba(34,197,94,0.1);   border: 1px solid rgba(34,197,94,0.3);   color: var(--green); }
+        .status-banner.pending   { background: rgba(234,179,8,0.1);   border: 1px solid rgba(234,179,8,0.3);   color: var(--yellow); }
+        .status-banner.cancelled { background: rgba(100,100,100,0.1); border: 1px solid rgba(100,100,100,0.3); color: var(--grey-light); }
+        .status-banner.failed    { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.3);   color: var(--red); }
+
         .order-number-box {
             background: var(--black-card); border: 1px solid var(--orange);
             padding: 24px; text-align: center; margin: 32px 0;
@@ -58,39 +70,28 @@
         .order-number-label { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--grey-light); margin-bottom: 8px; }
         .order-number-value { font-family: var(--font-head); font-size: 36px; font-weight: 800; color: var(--orange); letter-spacing: 2px; }
 
-        /* ---- Details sections ---- */
-        .detail-box {
-            background: var(--black-card); border: 1px solid var(--black-border);
-            padding: 28px; margin-bottom: 20px;
-        }
+        .detail-box { background: var(--black-card); border: 1px solid var(--black-border); padding: 28px; margin-bottom: 20px; }
         .detail-box h3 {
             font-family: var(--font-head); font-size: 18px; font-weight: 800;
             text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
-            padding-bottom: 10px; border-bottom: 1px solid var(--black-border);
-            color: var(--orange);
+            padding-bottom: 10px; border-bottom: 1px solid var(--black-border); color: var(--orange);
         }
         .detail-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid var(--black-border); }
         .detail-row:last-child { border-bottom: none; }
         .detail-row span:first-child { color: var(--grey-light); }
-        .detail-row span:last-child { font-weight: 500; text-align: right; }
+        .detail-row span:last-child  { font-weight: 500; text-align: right; }
 
-        /* Items list */
-        .item-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 0; border-bottom: 1px solid var(--black-border); gap: 12px;
-        }
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--black-border); gap: 12px; }
         .item-row:last-child { border-bottom: none; }
-        .item-part { font-family: var(--font-head); font-size: 18px; font-weight: 800; }
-        .item-desc { font-size: 12px; color: var(--grey-light); margin-top: 2px; }
-        .item-qty  { font-size: 13px; color: var(--grey-light); white-space: nowrap; }
+        .item-part  { font-family: var(--font-head); font-size: 18px; font-weight: 800; }
+        .item-desc  { font-size: 12px; color: var(--grey-light); margin-top: 2px; }
+        .item-qty   { font-size: 13px; color: var(--grey-light); white-space: nowrap; }
         .item-price { font-family: var(--font-head); font-size: 18px; font-weight: 800; color: var(--orange); white-space: nowrap; }
 
-        /* Totals */
         .totals-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; color: var(--grey-light); }
         .totals-row.grand { color: var(--white); font-family: var(--font-head); font-size: 26px; font-weight: 800; padding-top: 16px; border-top: 1px solid var(--black-border); margin-top: 8px; }
         .totals-row.grand span:last-child { color: var(--orange); }
 
-        /* ---- Actions ---- */
         .actions { display: flex; gap: 16px; margin-top: 32px; flex-wrap: wrap; }
         .btn-primary {
             flex: 1; padding: 16px; background: var(--orange); color: var(--black);
@@ -100,21 +101,15 @@
         }
         .btn-primary:hover { background: var(--orange-dark); color: var(--white); }
         .btn-secondary {
-            flex: 1; padding: 16px; background: transparent;
-            border: 1px solid var(--black-border); color: var(--grey-light);
-            font-family: var(--font-head); font-size: 18px; font-weight: 800;
+            flex: 1; padding: 16px; background: transparent; border: 1px solid var(--black-border);
+            color: var(--grey-light); font-family: var(--font-head); font-size: 18px; font-weight: 800;
             letter-spacing: 1px; text-transform: uppercase; text-align: center;
             transition: border-color 0.2s, color 0.2s;
         }
         .btn-secondary:hover { border-color: var(--orange); color: var(--orange); }
 
         footer { background: var(--black-card); border-top: 1px solid var(--black-border); padding: 32px 40px; text-align: center; font-size: 13px; color: var(--grey-mid); margin-top: 60px; }
-
-        @media (max-width: 600px) {
-            .page-wrap { padding: 90px 20px 60px; }
-            nav { padding: 0 20px; }
-            .actions { flex-direction: column; }
-        }
+        @media (max-width: 600px) { .page-wrap { padding: 90px 20px 60px; } nav { padding: 0 20px; } .actions { flex-direction: column; } }
     </style>
 </head>
 <body>
@@ -130,23 +125,81 @@
 
     <div class="page-wrap">
 
-        <!-- Success Header -->
-        <div class="success-header">
-            <div class="success-icon">✓</div>
-            <h1 class="success-title">Order <em>Confirmed!</em></h1>
-            <p class="success-sub">
-                Thank you, <strong>{{ order.customer_name }}</strong>!
-                A confirmation has been sent to <strong>{{ order.customer_email }}</strong>.
-            </p>
-        </div>
+        <!--
+        =====================================================================
+        STATUS HEADER
+        Shows different content based on payment_status in the database.
 
-        <!-- Order Number -->
+        payment_status values:
+          paid            = PayFast ITN confirmed payment received ✅
+          pending_payment = Order saved but ITN not yet received ⏳
+          cancelled       = Customer clicked Cancel on PayFast ❌
+          failed          = PayFast reported payment failed ⚠️
+        =====================================================================
+        -->
+
+        {% if order.payment_status == 'paid' %}
+            <div class="status-header">
+                <div class="status-icon paid">✓</div>
+                <h1 class="status-title">Payment <span class="c-green">Confirmed!</span></h1>
+                <p class="status-sub">
+                    Thank you, <strong>{{ order.customer_name }}</strong>!<br>
+                    Your payment was successful. A confirmation has been sent to <strong>{{ order.customer_email }}</strong>.
+                </p>
+            </div>
+            <div class="status-banner paid">
+                ✅ &nbsp;Payment received via PayFast · Your order is confirmed and being processed
+            </div>
+
+        {% elif order.payment_status == 'cancelled' %}
+            <div class="status-header">
+                <div class="status-icon cancelled">✕</div>
+                <h1 class="status-title">Payment <span class="c-grey">Cancelled</span></h1>
+                <p class="status-sub">
+                    Hi <strong>{{ order.customer_name }}</strong>, you cancelled the payment on PayFast's page.<br>
+                    No money was taken. You can go back to your cart and try again.
+                </p>
+            </div>
+            <div class="status-banner cancelled">
+                ✕ &nbsp;Payment was cancelled — no money was taken from your account
+            </div>
+
+        {% elif order.payment_status == 'failed' %}
+            <div class="status-header">
+                <div class="status-icon failed">!</div>
+                <h1 class="status-title">Payment <span class="c-red">Failed</span></h1>
+                <p class="status-sub">
+                    Hi <strong>{{ order.customer_name }}</strong>, your payment could not be processed.<br>
+                    No money was taken. Please try again with a different card or payment method.
+                </p>
+            </div>
+            <div class="status-banner failed">
+                ⚠️ &nbsp;Payment failed — no money was taken. Please try a different card.
+            </div>
+
+        {% else %}
+            <!-- pending_payment — PayFast redirected customer back but ITN not yet received -->
+            <!-- This usually shows for just a second before the ITN arrives -->
+            <div class="status-header">
+                <div class="status-icon pending">⏳</div>
+                <h1 class="status-title">Payment <span class="c-yellow">Processing...</span></h1>
+                <p class="status-sub">
+                    Hi <strong>{{ order.customer_name }}</strong>, we are waiting for payment confirmation from PayFast.<br>
+                    This usually takes just a few seconds. You will receive a confirmation email shortly.
+                </p>
+            </div>
+            <div class="status-banner pending">
+                ⏳ &nbsp;Awaiting payment confirmation — please do not close this page
+            </div>
+        {% endif %}
+
+        <!-- Order Number — always shown -->
         <div class="order-number-box">
             <p class="order-number-label">Your Order Number</p>
             <p class="order-number-value">{{ order.order_number }}</p>
         </div>
 
-        <!-- Items Ordered -->
+        <!-- Items Ordered — always shown -->
         <div class="detail-box">
             <h3>Items Ordered</h3>
             {% for item in items %}
@@ -168,46 +221,33 @@
                 <span>{% if order.delivery_fee == 0 %}Free{% else %}{{ order.delivery_fee | currency }}{% endif %}</span>
             </div>
             <div class="totals-row grand">
-                <span>Total Paid</span>
+                <span>{% if order.payment_status == 'paid' %}Total Paid{% else %}Order Total{% endif %}</span>
                 <span>{{ order.total_amount | currency }}</span>
             </div>
         </div>
 
-        <!-- Delivery Details -->
+        <!-- Delivery Details — always shown -->
         <div class="detail-box">
             <h3>Delivery Details</h3>
-            <div class="detail-row">
-                <span>Name</span>
-                <span>{{ order.customer_name }}</span>
-            </div>
-            <div class="detail-row">
-                <span>Address</span>
-                <span>{{ order.delivery_address }}</span>
-            </div>
-            <div class="detail-row">
-                <span>City</span>
-                <span>{{ order.delivery_city }}</span>
-            </div>
-            <div class="detail-row">
-                <span>Province</span>
-                <span>{{ order.delivery_province }}</span>
-            </div>
-            <div class="detail-row">
-                <span>Postal Code</span>
-                <span>{{ order.delivery_postcode }}</span>
-            </div>
+            <div class="detail-row"><span>Name</span><span>{{ order.customer_name }}</span></div>
+            <div class="detail-row"><span>Address</span><span>{{ order.delivery_address }}</span></div>
+            <div class="detail-row"><span>City</span><span>{{ order.delivery_city }}</span></div>
+            <div class="detail-row"><span>Province</span><span>{{ order.delivery_province }}</span></div>
+            <div class="detail-row"><span>Postal Code</span><span>{{ order.delivery_postcode }}</span></div>
             {% if order.order_notes %}
-                <div class="detail-row">
-                    <span>Notes</span>
-                    <span>{{ order.order_notes }}</span>
-                </div>
+                <div class="detail-row"><span>Notes</span><span>{{ order.order_notes }}</span></div>
             {% endif %}
         </div>
 
-        <!-- Actions -->
+        <!-- Action buttons — change based on payment outcome -->
         <div class="actions">
-            <a href="/" class="btn-primary">Find More Parts →</a>
-            <a href="/" class="btn-secondary">← Back to Home</a>
+            {% if order.payment_status in ['cancelled', 'failed'] %}
+                <a href="/cart" class="btn-primary">Try Again →</a>
+                <a href="/"     class="btn-secondary">← Back to Home</a>
+            {% else %}
+                <a href="/" class="btn-primary">Find More Parts →</a>
+                <a href="/" class="btn-secondary">← Back to Home</a>
+            {% endif %}
         </div>
 
     </div>
