@@ -1,25 +1,20 @@
 # =============================================================================
 # payfast_helper.py
 # =============================================================================
-# Handles everything PayFast-related:
-#   1. Building the payment form data (all the fields PayFast needs)
-#   2. Generating the security signature (a fingerprint to prove it came from us)
-#   3. Verifying the ITN notification (to prove it came from PayFast)
+# Handles all PayFast communication:
+#   1. Building the outgoing payment form data + signature
+#   2. Verifying the incoming ITN signature (FIXED in Phase 5)
 #
-# HOW THE SIGNATURE WORKS (simply):
-#   Imagine writing all your order fields in a specific order on a piece of paper:
-#     merchant_id=10000100&merchant_key=46f0cd694581a&amount=1250.00&...
-#   Then you add your secret passphrase at the end.
-#   Then you run the whole string through an MD5 scrambler.
-#   The result is a unique 32-character fingerprint — the signature.
+# THE SIGNATURE FIX EXPLAINED (simply):
 #
-#   PayFast does the EXACT same calculation on their side.
-#   If the fingerprints match — the data is genuine and untampered.
-#   If they don't match — PayFast rejects the payment (which is what was happening).
+# BEFORE (broken):
+#   PayFast sends ITN → Flask URL-decodes the values → we re-encode with quote_plus
+#   PayFast's encoding != our re-encoding → signatures don't match ❌
 #
-# ⚠️ CRITICAL RULE: The fields MUST be in the exact same order on both sides.
-#    PayFast does NOT sort them. We must NOT sort them either.
-#    The previous version sorted alphabetically — that broke everything.
+# AFTER (fixed):
+#   PayFast sends ITN → we take the RAW body exactly as PayFast sent it
+#   We strip the signature field and hash the rest (same as what PayFast hashed)
+#   Same input → same MD5 → signatures match ✅
 # =============================================================================
 
 import hashlib          # For creating the MD5 fingerprint
@@ -29,8 +24,9 @@ import os               # For reading .env variables
 
 def get_payfast_url():
     """
-    Returns the correct PayFast URL based on sandbox mode setting in .env
-    Sandbox = test mode, no real money moves.
+    Returns the correct PayFast URL based on PAYFAST_SANDBOX in .env
+    true  = sandbox.payfast.co.za (test, no real money)
+    false = www.payfast.co.za     (live, real money — Phase 6 only)
     """
     sandbox = os.environ.get('PAYFAST_SANDBOX', 'true').lower() == 'true'
     if sandbox:
@@ -41,133 +37,98 @@ def get_payfast_url():
 
 def generate_signature(data, passphrase=None):
     """
-    Creates the PayFast security signature.
+    Creates the PayFast security signature for the OUTGOING payment form.
 
-    IMPORTANT: Fields must stay in the exact order they were added to the
-    dictionary. We iterate data.items() directly — NO sorting.
+    This is used when we build the form to send the customer to PayFast.
+    PayFast verifies this signature to confirm the form came from us.
+
+    Rules:
+      - Fields must be in the exact order they were added (no sorting)
+      - Each value is URL-encoded with quote_plus (spaces → +)
+      - Passphrase is appended at the end
+      - MD5 hash of the whole string = the signature
 
     Parameters:
-        data       - ordered dictionary of form fields
-        passphrase - the PayFast passphrase from your .env file
+        data       - ordered dict of form fields
+        passphrase - your PayFast passphrase from .env
 
     Returns:
-        A 32-character MD5 hash string e.g. "a3f5c1d8e9b2..."
+        32-character MD5 hash string e.g. "a3f5c1d8e9b2..."
     """
     payload_parts = []
 
-    # -------------------------------------------------------------------------
-    # Loop through fields IN ORDER — do NOT sort them
-    # PayFast calculates the signature in the same order fields were submitted
-    # Sorting would produce a different fingerprint = signature mismatch error
-    # -------------------------------------------------------------------------
     for key, value in data.items():
-
         # Skip the signature field itself (we're generating it)
         if key == 'signature':
             continue
-
         # Skip completely empty values
-        # Note: "0" and "0.00" are NOT empty — only truly blank strings
         if str(value).strip() == '':
             continue
-
-        # URL-encode the value
-        # This converts spaces to + and special characters to %XX
-        # e.g. "John Smith" becomes "John+Smith"
+        # URL-encode the value (spaces → +, @ → %40, etc.)
         encoded_value = urllib.parse.quote_plus(str(value))
         payload_parts.append(f"{key}={encoded_value}")
 
-    # Join all parts with & between them
-    # e.g. "merchant_id=10000100&merchant_key=46f0cd694581a&amount=1250.00"
     payload = '&'.join(payload_parts)
 
-    # Append the passphrase at the very end (if one is set)
-    # The passphrase acts like a secret password that only you and PayFast know
+    # Append the passphrase at the end
     if passphrase and str(passphrase).strip():
         encoded_passphrase = urllib.parse.quote_plus(passphrase.strip())
         payload += f"&passphrase={encoded_passphrase}"
 
-    # Run the whole string through MD5 to get the signature fingerprint
     signature = hashlib.md5(payload.encode('utf-8')).hexdigest()
 
-    # Print for debugging — you can see this in your terminal when testing
-    print(f"🔏 Signature input  : {payload}")
-    print(f"🔏 Signature output : {signature}")
+    print(f"🔏 Outgoing signature input  : {payload}")
+    print(f"🔏 Outgoing signature output : {signature}")
 
     return signature
 
 
 def build_payfast_form_data(order_number, total_amount, customer_name, customer_email, base_url):
     """
-    Builds the complete set of form fields that PayFast needs.
+    Builds the complete set of form fields to send the customer to PayFast.
 
-    The ORDER fields are added to this dictionary matters for the signature.
-    PayFast expects merchant details first, then URLs, then customer, then payment.
-    We match that exact order here.
+    The field ORDER matters for the signature — PayFast expects them in
+    this specific order: merchant → URLs → customer → payment details.
 
     Parameters:
-        order_number   - e.g. "EBC-20250418-0001"
-        total_amount   - e.g. 1250.00 (Rands, not cents)
+        order_number   - e.g. "EBC-20260419-0001"
+        total_amount   - e.g. 1250.00 (Rands, NOT cents)
         customer_name  - e.g. "John Smith"
         customer_email - e.g. "john@example.com"
         base_url       - e.g. "https://abc123.ngrok-free.app"
 
     Returns:
         {
-            'form_data'   : { all fields including signature },
+            'form_data'   : { all fields including the signature },
             'payfast_url' : 'https://sandbox.payfast.co.za/eng/process'
         }
     """
-    # Read credentials from .env file
     merchant_id  = os.environ.get('PAYFAST_MERCHANT_ID', '10000100')
     merchant_key = os.environ.get('PAYFAST_MERCHANT_KEY', '46f0cd694581a')
     passphrase   = os.environ.get('PAYFAST_PASSPHRASE',  'jt7NOE43FZPn')
 
     base_url = base_url.rstrip('/')
 
-    # Split full name into first and last name
-    # PayFast needs them as separate fields
+    # Split full name into first and last (PayFast needs them separate)
     name_parts = customer_name.strip().split(' ', 1)
     name_first = name_parts[0]
     name_last  = name_parts[1] if len(name_parts) > 1 else '-'
 
-    # -------------------------------------------------------------------------
-    # Build the form data IN THIS EXACT ORDER.
-    #
-    # Why does order matter?
-    # Python dictionaries keep their insertion order (since Python 3.7).
-    # When we loop through this dict to generate the signature,
-    # the fields must appear in the same order that PayFast expects.
-    #
-    # If you ever add new fields, add them at the END before the signature step
-    # and check PayFast's documentation for where they belong.
-    # -------------------------------------------------------------------------
+    # Build the form data in the EXACT ORDER PayFast expects
     data = {}
-
-    # 1. Merchant details (who we are)
     data['merchant_id']   = merchant_id
     data['merchant_key']  = merchant_key
-
-    # 2. Redirect URLs (where to send the customer after payment)
     data['return_url']    = f"{base_url}/order/confirmation/{order_number}"
     data['cancel_url']    = f"{base_url}/payment/cancelled/{order_number}"
     data['notify_url']    = f"{base_url}/payfast/notify"
-
-    # 3. Customer details (PayFast pre-fills their form with these)
     data['name_first']    = name_first
     data['name_last']     = name_last
     data['email_address'] = customer_email
-
-    # 4. Order / payment details
     data['m_payment_id']  = order_number
-    # Amount must be formatted as "1250.00" — exactly 2 decimal places, no currency symbol
-    data['amount']        = f"{total_amount:.2f}"
+    data['amount']        = f"{total_amount:.2f}"   # e.g. "1250.00"
     data['item_name']     = f"EBC Brake Parts - {order_number}"
 
-    # -------------------------------------------------------------------------
-    # 5. Generate the signature LAST, after all other fields are added
-    #    The signature is a fingerprint of all the fields above.
-    # -------------------------------------------------------------------------
+    # Generate the signature LAST — it fingerprints all fields above
     data['signature'] = generate_signature(data, passphrase)
 
     print(f"📋 PayFast form built for {order_number} — R{total_amount:.2f}")
@@ -179,37 +140,76 @@ def build_payfast_form_data(order_number, total_amount, customer_name, customer_
     }
 
 
-def verify_itn_signature(post_data, passphrase=None):
+def verify_itn_signature(raw_post_body, received_signature, passphrase=None):
     """
-    Verifies that an ITN (Instant Transaction Notification) came from PayFast.
+    Verifies the ITN (Instant Transaction Notification) signature from PayFast.
 
-    When PayFast sends our server the "payment done" notification,
-    they include a signature. We recalculate it ourselves using the same data.
-    If our calculation matches theirs — the notification is genuine.
+    WHY WE USE THE RAW BODY:
+    ========================
+    When PayFast sends the ITN, they compute the signature from the raw
+    URL-encoded POST values. If we URL-decode those values (what Flask does
+    automatically) and then re-encode them, tiny encoding differences can
+    produce a different MD5 fingerprint.
+
+    The safest approach: take the raw POST body exactly as PayFast sent it,
+    strip out the signature field, append the passphrase, and hash it.
+    This guarantees we're hashing the exact same string PayFast hashed.
+
+    Example raw body PayFast sends:
+      m_payment_id=EBC-20260419-0001&pf_payment_id=3112001&...&signature=abc123
+
+    We strip the signature field:
+      m_payment_id=EBC-20260419-0001&pf_payment_id=3112001&...
+
+    Append the passphrase:
+      m_payment_id=EBC-20260419-0001&...&passphrase=jt7NOE43FZPn
+
+    MD5 of that = should match what PayFast computed ✅
 
     Parameters:
-        post_data  - the form data PayFast POSTed to /payfast/notify
-        passphrase - our PayFast passphrase from .env
+        raw_post_body       - the raw string body of the POST request
+        received_signature  - the signature PayFast included in their POST
+        passphrase          - your PayFast passphrase from .env
 
     Returns:
-        True if valid, False if suspicious
+        True if signatures match (notification is genuine)
+        False if they don't match (do not process this notification!)
     """
-    received_signature = post_data.get('signature', '')
+    # -------------------------------------------------------------------------
+    # Split the raw body into individual key=value pairs.
+    # Keep each pair EXACTLY as-is — no decoding, no re-encoding.
+    # Filter out the signature= pair since we're recalculating it.
+    # -------------------------------------------------------------------------
+    parts = []
+    for pair in raw_post_body.split('&'):
+        if '=' not in pair:
+            continue
+        key = pair.split('=', 1)[0]    # Get just the key name
+        if key != 'signature':         # Skip the signature field
+            parts.append(pair)         # Keep the raw key=value exactly
 
-    # Make a copy of the data without the signature field
-    # (we're about to recalculate what it should be)
-    data_to_verify = {k: v for k, v in post_data.items() if k != 'signature'}
+    # Rejoin all other fields
+    payload = '&'.join(parts)
 
-    # Recalculate the expected signature
-    expected_signature = generate_signature(data_to_verify, passphrase)
+    # -------------------------------------------------------------------------
+    # Append the passphrase at the end.
+    # This IS URL-encoded because that's what PayFast does on their side.
+    # -------------------------------------------------------------------------
+    if passphrase and str(passphrase).strip():
+        encoded_passphrase = urllib.parse.quote_plus(passphrase.strip())
+        payload += f"&passphrase={encoded_passphrase}"
 
-    is_valid = (received_signature == expected_signature)
+    # Compute the MD5 fingerprint
+    computed_signature = hashlib.md5(payload.encode('utf-8')).hexdigest()
+
+    is_valid = (computed_signature == received_signature)
 
     if is_valid:
-        print(f"✅ PayFast ITN signature is valid")
+        print(f"✅ PayFast ITN signature valid")
     else:
         print(f"❌ PayFast ITN signature INVALID")
-        print(f"   Received : {received_signature}")
-        print(f"   Expected : {expected_signature}")
+        print(f"   Raw payload  : {payload}")
+        print(f"   Received sig : {received_signature}")
+        print(f"   Computed sig : {computed_signature}")
 
     return is_valid

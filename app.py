@@ -5,11 +5,9 @@
 # Start: python3 app.py
 # Stop:  CTRL + C
 #
-# PHASE 5 CHANGES (PayFast):
-#   - Loads .env file for credentials
-#   - /api/orders now builds PayFast form data and returns it to the browser
-#   - /payfast/notify — PayFast calls this secretly after payment (ITN)
-#   - /payment/cancelled/<order_number> — customer cancelled on PayFast
+# PHASE 5 FIX (this version):
+#   /payfast/notify correctly passes raw_body + received_signature
+#   to verify_itn_signature() instead of the old post_data dict
 # =============================================================================
 
 from flask import Flask, request, jsonify, render_template, session, redirect
@@ -18,18 +16,13 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from datetime import datetime
-from dotenv import load_dotenv                        # Reads our .env file
-from payfast_helper import (                          # Our PayFast helper
+from dotenv import load_dotenv
+from payfast_helper import (
     build_payfast_form_data,
     verify_itn_signature
 )
 
-# ------------------------------------------------------------------------------
-# LOAD .env FILE
-# Must be called before anything reads os.environ.get()
-# ------------------------------------------------------------------------------
 load_dotenv()
-
 
 # ------------------------------------------------------------------------------
 # APP SETUP
@@ -39,19 +32,13 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'equibrakecape-dev-secret-key-2025')
 
 DATABASE = 'products.db'
-
-# The public-facing URL of this server.
-# PayFast needs this to send customers back after payment
-# and to send the ITN (payment notification).
-# Local testing: set this to your ngrok URL in .env
-BASE_URL = os.environ.get('BASE_URL', 'http://localhost:5000').rstrip('/')
-
+BASE_URL  = os.environ.get('BASE_URL', 'http://localhost:5000').rstrip('/')
 
 # ------------------------------------------------------------------------------
 # EMAIL CONFIGURATION
-# For local testing, open a second terminal and run:
+# Open a second terminal and run:
 #   python3 -m smtpd -n -c DebuggingServer localhost:1025
-# Emails will print there instead of being sent for real.
+# Emails print there during development instead of being sent for real.
 # ------------------------------------------------------------------------------
 EMAIL_HOST  = 'localhost'
 EMAIL_PORT  = 1025
@@ -82,10 +69,7 @@ def format_currency(amount):
 
 
 def generate_order_number():
-    """
-    Generates a unique order number.
-    e.g. EBC-20250418-0001
-    """
+    """Generates a unique order number e.g. EBC-20260419-0001"""
     today = datetime.now().strftime('%Y%m%d')
     conn  = get_db_connection()
     count = conn.execute(
@@ -111,7 +95,7 @@ def send_order_email(order, items):
         body = f"""
 Dear {order['customer_name']},
 
-Great news — your payment has been confirmed and your order is on its way!
+Great news — your payment has been confirmed and your order is being processed!
 
 ORDER DETAILS
 =============
@@ -195,8 +179,7 @@ def results():
         return render_template('index.html')
 
     conn = get_db_connection()
-
-    sql = '''
+    sql  = '''
         SELECT DISTINCT
             p.part_number, p.category, p.srp_incl_vat, p.srp_excl_vat,
             vf.product_type, vf.position,
@@ -204,17 +187,15 @@ def results():
         FROM vehicle_fitment vf
         JOIN vehicles v ON vf.vehicle_id  = v.id
         JOIN products  p ON vf.part_number = p.part_number
-        WHERE v.make  = ? AND v.model = ?
+        WHERE v.make = ? AND v.model = ?
     '''
     params = [make, model]
-
     if year:
         sql += ' AND v.year = ?'
         params.append(year)
     if engine:
         sql += ' AND v.engine = ?'
         params.append(engine)
-
     sql += ' ORDER BY p.category, vf.position'
 
     parts      = conn.execute(sql, params).fetchall()
@@ -281,10 +262,7 @@ def checkout_page():
 def order_confirmation(order_number):
     """
     Confirmation page — shown after PayFast redirects the customer back.
-    The payment_status column tells the page what to display:
-      paid            → success message ✅
-      pending_payment → waiting for PayFast to confirm ⏳
-      cancelled       → customer cancelled ❌
+    payment_status in the database drives what the page displays.
     """
     conn  = get_db_connection()
     order = conn.execute(
@@ -307,7 +285,7 @@ def order_confirmation(order_number):
 
 
 # ==============================================================================
-# PAYFAST PAYMENT ROUTES  ← NEW IN PHASE 5
+# PAYFAST PAYMENT ROUTES
 # ==============================================================================
 
 @app.route('/payfast/notify', methods=['POST'])
@@ -315,88 +293,89 @@ def payfast_notify():
     """
     POST /payfast/notify
     ====================
-    PayFast calls this URL secretly after a payment is completed.
-    This is called an ITN — Instant Transaction Notification.
+    PayFast secretly calls this URL after a payment completes (ITN).
 
-    Think of it like PayFast sending you a text message saying:
-    "Hey, order EBC-20250418-0001 was just paid — R1,250.00 received."
+    KEY FIX: We read the raw POST body as a plain string using
+    request.get_data(as_text=True) BEFORE Flask parses it.
+    We then pass that raw string into verify_itn_signature() so we
+    hash exactly the same bytes that PayFast hashed — guaranteeing a match.
 
-    This is the ONLY reliable way to confirm payment.
-    Never trust the return_url redirect alone — customers can
-    manually type any URL and fake a success page visit.
-    This ITN comes directly from PayFast's servers.
-
-    IMPORTANT FOR LOCAL TESTING:
-    PayFast needs to reach this URL over the internet.
-    Use ngrok: ngrok http 5000
-    Then set BASE_URL in .env to your ngrok URL.
+    We still use request.form to conveniently READ individual field values.
     """
-    # Get all the fields PayFast sent us
-    # PayFast sends a form POST (not JSON), so we use request.form
+
+    # ------------------------------------------------------------------
+    # Read the raw POST body exactly as PayFast sent it.
+    # This is a plain string like:
+    # "m_payment_id=EBC-...&pf_payment_id=123&payment_status=COMPLETE&...&signature=abc"
+    # ------------------------------------------------------------------
+    raw_body  = request.get_data(as_text=True)
+
+    # Also parse the form fields for easy value reading
     post_data = request.form.to_dict()
 
-    print(f"📬 PayFast ITN received: {post_data.get('payment_status')} | Order: {post_data.get('m_payment_id')}")
+    # Pull out the individual values we need
+    received_signature = post_data.get('signature', '')
+    payment_status     = post_data.get('payment_status', '').upper()
+    order_number       = post_data.get('m_payment_id', '')
+    pf_payment_id      = post_data.get('pf_payment_id', '')
+    amount_gross       = post_data.get('amount_gross', '0')
 
-    # -------------------------------------------------------------------------
-    # STEP 1: Verify the signature
-    # This proves the notification genuinely came from PayFast
-    # -------------------------------------------------------------------------
+    print(f"📬 PayFast ITN received | Status: {payment_status} | Order: {order_number}")
+
+    # ------------------------------------------------------------------
+    # STEP 1: Verify the signature using the RAW body string.
+    # We pass three things:
+    #   1. raw_body           — the exact string PayFast sent us
+    #   2. received_signature — the signature PayFast included
+    #   3. passphrase         — our secret word from .env
+    # ------------------------------------------------------------------
     passphrase = os.environ.get('PAYFAST_PASSPHRASE', '')
-    if not verify_itn_signature(post_data, passphrase):
-        print("❌ PayFast ITN: Signature verification FAILED — ignoring")
-        # Return 200 so PayFast stops retrying, but we don't process it
-        return 'OK', 200
 
-    # -------------------------------------------------------------------------
-    # STEP 2: Check the payment status
-    # PayFast sends payment_status = "COMPLETE" for successful payments
-    # Other values: "FAILED", "PENDING"
-    # -------------------------------------------------------------------------
-    payment_status   = post_data.get('payment_status', '').upper()
-    order_number     = post_data.get('m_payment_id', '')   # Our order number we sent to PayFast
-    pf_payment_id    = post_data.get('pf_payment_id', '')  # PayFast's own payment ID
-    amount_gross     = post_data.get('amount_gross', '0')  # Amount PayFast received
+    if not verify_itn_signature(raw_body, received_signature, passphrase):
+        print("❌ ITN signature check failed — ignoring this notification")
+        return 'OK', 200   # Return 200 so PayFast stops retrying
 
+    # ------------------------------------------------------------------
+    # STEP 2: Check we have an order number to work with
+    # ------------------------------------------------------------------
     if not order_number:
-        print("⚠️  ITN: No m_payment_id in PayFast notification")
+        print("⚠️  ITN: No m_payment_id found in notification")
         return 'OK', 200
 
-    conn = get_db_connection()
-
-    # Find the order in our database
+    conn  = get_db_connection()
     order = conn.execute(
         'SELECT * FROM orders WHERE order_number = ?', (order_number,)
     ).fetchone()
 
     if not order:
-        print(f"⚠️  ITN: No order found for order number: {order_number}")
+        print(f"⚠️  ITN: No order found for: {order_number}")
         conn.close()
         return 'OK', 200
 
-    # -------------------------------------------------------------------------
-    # STEP 3: Verify the amount matches what we expected
-    # This prevents someone from paying R1 for a R1,250 order
-    # -------------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # STEP 3: Verify the amount matches what we stored
+    # Prevents someone paying R1 for a R1,250 order
+    # ------------------------------------------------------------------
     try:
         received_amount = float(amount_gross)
         expected_amount = float(order['total_amount'])
-        # Allow 1 cent tolerance for floating point rounding
         if abs(received_amount - expected_amount) > 0.01:
-            print(f"❌ ITN: Amount mismatch! Expected R{expected_amount:.2f}, received R{received_amount:.2f}")
+            print(f"❌ Amount mismatch! Expected R{expected_amount:.2f}, got R{received_amount:.2f}")
             conn.close()
             return 'OK', 200
     except ValueError:
-        print(f"⚠️  ITN: Could not parse amount: {amount_gross}")
+        print(f"⚠️  Could not parse amount: {amount_gross}")
 
-    # -------------------------------------------------------------------------
-    # STEP 4: Update our order based on PayFast's payment_status
-    # -------------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # STEP 4: Update the order based on PayFast's payment_status
+    # ------------------------------------------------------------------
     if payment_status == 'COMPLETE':
-        # Payment successful! Mark order as paid ✅
+
+        # Mark the order as paid ✅
         conn.execute('''
             UPDATE orders
-            SET payment_status    = 'paid',
-                status            = 'confirmed',
+            SET payment_status     = 'paid',
+                status             = 'confirmed',
                 payfast_payment_id = ?
             WHERE order_number = ?
         ''', (pf_payment_id, order_number))
@@ -407,55 +386,49 @@ def payfast_notify():
             'SELECT * FROM order_items WHERE order_id = ?', (order['id'],)
         ).fetchall()
 
-        # Build updated order dict for the email
-        order_dict                     = dict(order)
-        order_dict['payment_status']   = 'paid'
-        order_dict['status']           = 'confirmed'
+        # Build updated order dict to pass to the email function
+        order_dict                   = dict(order)
+        order_dict['payment_status'] = 'paid'
+        order_dict['status']         = 'confirmed'
 
-        print(f"✅ Payment confirmed for order {order_number} | PayFast ID: {pf_payment_id}")
+        print(f"✅ Payment CONFIRMED for {order_number} | PayFast ID: {pf_payment_id}")
 
-        # Send the customer their confirmation email now that payment is confirmed
+        # Send the customer their confirmation email
         send_order_email(order_dict, [dict(i) for i in items])
 
     elif payment_status == 'FAILED':
         conn.execute('''
-            UPDATE orders
-            SET payment_status = 'failed', status = 'cancelled'
+            UPDATE orders SET payment_status = 'failed', status = 'cancelled'
             WHERE order_number = ?
         ''', (order_number,))
         conn.commit()
-        print(f"❌ Payment FAILED for order {order_number}")
+        print(f"❌ Payment FAILED for {order_number}")
 
     elif payment_status == 'PENDING':
-        # Pending means EFT was chosen — we wait for bank to clear
+        # Customer chose EFT — waiting for bank to clear
         conn.execute('''
-            UPDATE orders
-            SET payment_status = 'pending_payment'
+            UPDATE orders SET payment_status = 'pending_payment'
             WHERE order_number = ?
         ''', (order_number,))
         conn.commit()
-        print(f"⏳ Payment PENDING (likely EFT) for order {order_number}")
+        print(f"⏳ Payment PENDING (EFT) for {order_number}")
 
     conn.close()
 
-    # IMPORTANT: Always return a plain "OK" with HTTP 200
-    # If we return anything else, PayFast will keep retrying the ITN
+    # Always return plain "OK" with HTTP 200.
+    # Any other response causes PayFast to keep retrying.
     return 'OK', 200
 
 
 @app.route('/payment/cancelled/<order_number>')
 def payment_cancelled(order_number):
     """
-    GET /payment/cancelled/<order_number>
-    ======================================
-    PayFast redirects the customer here if they click Cancel.
-    We update the order and show the confirmation page with a
-    "Payment Cancelled" message.
+    PayFast sends the customer here if they click Cancel on the payment page.
+    We update the order and show the confirmation page with a cancelled message.
     """
     conn = get_db_connection()
     conn.execute('''
-        UPDATE orders
-        SET payment_status = 'cancelled', status = 'cancelled'
+        UPDATE orders SET payment_status = 'cancelled', status = 'cancelled'
         WHERE order_number = ?
     ''', (order_number,))
     conn.commit()
@@ -463,20 +436,17 @@ def payment_cancelled(order_number):
     order = conn.execute(
         'SELECT * FROM orders WHERE order_number = ?', (order_number,)
     ).fetchone()
-
     items = []
     if order:
         items = conn.execute(
             'SELECT * FROM order_items WHERE order_id = ?', (order['id'],)
         ).fetchall()
-
     conn.close()
 
     if not order:
         return redirect('/')
 
     print(f"❌ Payment cancelled for order {order_number}")
-
     return render_template('order_confirmation.html',
         order = dict(order),
         items = [dict(i) for i in items]
@@ -505,10 +475,10 @@ def add_to_cart():
         if field not in data:
             return jsonify({'error': f'Missing field: {field}'}), 400
 
-    part_number  = data['part_number']
-    unit_price   = float(data['unit_price'])
-    quantity     = int(data.get('quantity', 1))
-    cart         = session.get('cart', {})
+    part_number = data['part_number']
+    unit_price  = float(data['unit_price'])
+    quantity    = int(data.get('quantity', 1))
+    cart        = session.get('cart', {})
 
     if part_number in cart:
         cart[part_number]['quantity'] += quantity
@@ -524,7 +494,6 @@ def add_to_cart():
     cart[part_number]['line_total'] = round(
         cart[part_number]['unit_price'] * cart[part_number]['quantity'], 2
     )
-
     session['cart']  = cart
     session.modified = True
 
@@ -549,7 +518,9 @@ def update_cart():
         del cart[part_number]
     else:
         cart[part_number]['quantity']   = quantity
-        cart[part_number]['line_total'] = round(cart[part_number]['unit_price'] * quantity, 2)
+        cart[part_number]['line_total'] = round(
+            cart[part_number]['unit_price'] * quantity, 2
+        )
 
     session['cart']  = cart
     session.modified = True
@@ -584,28 +555,11 @@ def create_order():
     """
     POST /api/orders
     ================
-    PHASE 5 UPDATED FLOW:
-      1. Validates the customer's form fields
-      2. Calculates order totals
-      3. Saves the order to our database (payment_status = 'pending_payment')
-      4. Builds the PayFast form data (all fields + security signature)
-      5. Returns the PayFast URL + form fields to the browser
-      6. The browser's JavaScript builds a hidden form and submits it to PayFast
-      7. The customer pays on PayFast's hosted page
-      8. PayFast calls /payfast/notify (ITN) to confirm payment
-      9. PayFast redirects customer to /order/confirmation/<order_number>
-
-    Expected JSON (from checkout.html):
-    {
-        "customer_name"     : "John Smith",
-        "customer_email"    : "john@example.com",
-        "customer_phone"    : "082 000 0000",
-        "delivery_address"  : "123 Main Road",
-        "delivery_city"     : "Cape Town",
-        "delivery_province" : "Western Cape",
-        "delivery_postcode" : "8001",
-        "order_notes"       : "Please call before delivery"
-    }
+    1. Validates the checkout form fields
+    2. Saves the order to the database (payment_status = 'pending_payment')
+    3. Builds the PayFast form data + signature
+    4. Returns the PayFast URL + form fields to the browser
+    5. Browser JS builds a hidden form and submits it to PayFast
     """
     data = request.get_json()
     cart = session.get('cart', {})
@@ -632,11 +586,6 @@ def create_order():
 
     conn = get_db_connection()
     try:
-        # -----------------------------------------------------------------
-        # STEP 1: Save order to database
-        # payment_status starts as 'pending_payment'
-        # It will be updated to 'paid' when PayFast sends the ITN
-        # -----------------------------------------------------------------
         cursor = conn.execute('''
             INSERT INTO orders (
                 order_number, status, payment_status,
@@ -669,7 +618,6 @@ def create_order():
 
         order_id = cursor.lastrowid
 
-        # Save all cart items as order lines
         for item in items:
             line_total = round(item['unit_price'] * item['quantity'], 2)
             product    = conn.execute(
@@ -693,10 +641,6 @@ def create_order():
 
         print(f"💾 Order {order_number} saved (awaiting PayFast payment)")
 
-        # -----------------------------------------------------------------
-        # STEP 2: Build the PayFast payment form data
-        # This creates all the fields PayFast needs + the security signature
-        # -----------------------------------------------------------------
         payfast_data = build_payfast_form_data(
             order_number   = order_number,
             total_amount   = total,
@@ -705,19 +649,14 @@ def create_order():
             base_url       = BASE_URL
         )
 
-        # Clear the cart — the order is now saved in our database
         session.pop('cart', None)
-
         print(f"✅ Order {order_number} ready — sending customer to PayFast")
 
-        # Return the PayFast URL and form fields to the browser.
-        # The JavaScript in checkout.html will build a hidden form
-        # and submit it — redirecting the customer to PayFast's payment page.
         return jsonify({
             'message'      : 'Order created! Redirecting to PayFast...',
             'order_number' : order_number,
-            'payfast_url'  : payfast_data['payfast_url'],   # PayFast's URL
-            'form_data'    : payfast_data['form_data']       # All the hidden form fields
+            'payfast_url'  : payfast_data['payfast_url'],
+            'form_data'    : payfast_data['form_data']
         }), 201
 
     except Exception as e:
@@ -737,7 +676,7 @@ def get_all_orders():
 
 @app.route('/api/orders/<order_number>', methods=['GET'])
 def get_order(order_number):
-    """GET /api/orders/EBC-20250418-0001 — Returns one order with items."""
+    """GET /api/orders/EBC-20260419-0001 — Returns one order with items."""
     conn  = get_db_connection()
     order = conn.execute(
         'SELECT * FROM orders WHERE order_number = ?', (order_number,)
@@ -761,7 +700,9 @@ def get_order(order_number):
 @app.route('/api/makes', methods=['GET'])
 def get_makes():
     conn = get_db_connection()
-    rows = conn.execute('SELECT DISTINCT make FROM vehicles WHERE make IS NOT NULL ORDER BY make').fetchall()
+    rows = conn.execute(
+        'SELECT DISTINCT make FROM vehicles WHERE make IS NOT NULL ORDER BY make'
+    ).fetchall()
     conn.close()
     return jsonify([row['make'] for row in rows]), 200
 
@@ -773,7 +714,8 @@ def get_models():
         return jsonify({'error': 'make is required'}), 400
     conn = get_db_connection()
     rows = conn.execute(
-        'SELECT DISTINCT model FROM vehicles WHERE make = ? AND model IS NOT NULL ORDER BY model', (make,)
+        'SELECT DISTINCT model FROM vehicles WHERE make = ? AND model IS NOT NULL ORDER BY model',
+        (make,)
     ).fetchall()
     conn.close()
     return jsonify([row['model'] for row in rows]), 200
@@ -847,7 +789,9 @@ def get_all_products():
 @app.route('/api/products/<part_number>', methods=['GET'])
 def get_product(part_number):
     conn    = get_db_connection()
-    product = conn.execute('SELECT * FROM products WHERE part_number = ?', (part_number,)).fetchone()
+    product = conn.execute(
+        'SELECT * FROM products WHERE part_number = ?', (part_number,)
+    ).fetchone()
     if product is None:
         conn.close()
         return jsonify({'error': f'Product {part_number} not found'}), 404
@@ -866,7 +810,9 @@ def get_product(part_number):
 @app.route('/api/products/<part_number>', methods=['PATCH'])
 def update_product(part_number):
     conn     = get_db_connection()
-    existing = conn.execute('SELECT * FROM products WHERE part_number = ?', (part_number,)).fetchone()
+    existing = conn.execute(
+        'SELECT * FROM products WHERE part_number = ?', (part_number,)
+    ).fetchone()
     if existing is None:
         conn.close()
         return jsonify({'error': f'Product {part_number} not found'}), 404
@@ -892,7 +838,9 @@ def update_product(part_number):
 @app.route('/api/products/<part_number>', methods=['DELETE'])
 def delete_product(part_number):
     conn     = get_db_connection()
-    existing = conn.execute('SELECT * FROM products WHERE part_number = ?', (part_number,)).fetchone()
+    existing = conn.execute(
+        'SELECT * FROM products WHERE part_number = ?', (part_number,)
+    ).fetchone()
     if existing is None:
         conn.close()
         return jsonify({'error': f'Product {part_number} not found'}), 404
@@ -919,7 +867,6 @@ if __name__ == '__main__':
     print(f"🚀 Starting {STORE_NAME} server...")
     print("🌐 Store   : http://localhost:5000")
     print("🛒 Cart    : http://localhost:5000/cart")
-    print("📦 API     : http://localhost:5000/api/products")
     print("🔔 ITN     : http://localhost:5000/payfast/notify")
     print("⛔ Stop    : CTRL + C\n")
 
