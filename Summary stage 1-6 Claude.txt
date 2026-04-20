@@ -1,0 +1,78 @@
+Project: Equi Brake Cape — EBC Brake Store
+I am building an online brake parts store using Python and Flask. I am a business analyst, not a developer. Please explain everything simply.
+Tech stack: Python, Flask, SQLite, HTML/CSS/JS. No frameworks like React.
+GitHub repo: https://github.com/WadeAlberts/EquiBrakeCape.git
+Folder Structure
+EquiBrakeCape/
+├── app.py                     ← Main Flask server, all routes and API
+├── database.py                ← Creates all 5 database tables
+├── payfast_helper.py          ← Handles PayFast signature + form building
+├── import_prices.py           ← Imports EBC pricelist Excel into products table
+├── import_catalogue.py        ← Imports vehicle catalogue Excel (~30k rows)
+├── products.db                ← SQLite database (local only, not on GitHub)
+├── .env                       ← Secret credentials (not on GitHub)
+├── .gitignore                 ← Excludes .db, .xlsx and .env files
+└── templates/
+    ├── index.html             ← Home page with vehicle finder + category browser
+    ├── results.html           ← Search results page showing matching parts
+    ├── cart.html              ← Shopping cart page
+    ├── checkout.html          ← Checkout form (name, email, address)
+    └── order_confirmation.html ← Post-order confirmation page (4 payment states)
+Database Tables
+vehicles, products, vehicle_fitment, orders, order_items
+The orders table has these payment columns added in Phase 5:
+
+payment_status — values: pending_payment, paid, cancelled, failed
+payfast_payment_id — PayFast's own payment ID, stored when ITN is confirmed
+
+Completed Phases
+
+Phase 1: Flask setup, SQLite database, GitHub
+Phase 2: Excel import (vehicles + pricing, ~30k rows)
+Phase 3: Home page with cascading vehicle finder dropdowns, results page
+Phase 4: Cart (session-based), checkout, order confirmation, email via smtpd
+Phase 5: PayFast payment integration ✅ — fully working including ITN webhook
+
+Phase 5 — How PayFast Works in This Project
+The checkout flow works like this:
+
+Customer fills in the checkout form and clicks "Pay with PayFast"
+Flask saves the order to the database (payment_status = pending_payment)
+payfast_helper.py builds a signed form with all order details
+The browser submits that hidden form to sandbox.payfast.co.za
+Customer pays on PayFast's hosted page
+PayFast secretly POSTs an ITN to /payfast/notify on our server
+We verify the ITN using the raw POST body (not the decoded dict — this was the critical fix that made signatures match)
+Order is updated to payment_status = paid and confirmation email is sent
+PayFast redirects customer to /order/confirmation/<order_number>
+
+The confirmation page shows 4 different states based on payment_status in the database: paid ✅ / processing ⏳ / cancelled ❌ / failed ⚠️
+.env File Contents (structure — not real secrets)
+PAYFAST_MERCHANT_ID=10000100
+PAYFAST_MERCHANT_KEY=46f0cd694581a
+PAYFAST_PASSPHRASE=jt7NOE43FZPn
+PAYFAST_SANDBOX=true
+BASE_URL=https://your-ngrok-url.ngrok-free.app
+FLASK_SECRET_KEY=equibrakecape-dev-secret-key-2025
+The sandbox credentials above are PayFast's official public test credentials — safe to share. Real credentials go here in Phase 6.
+Python Packages Required
+bashpip3 install flask python-dotenv requests
+Rules You Must Follow
+
+Always provide full replacement code, never partial snippets
+Remind me to push to GitHub after every positive code change
+Explain everything like I am 12 years old with comments in all code
+Keep code as simple as possible
+OS: Mac and Windows (switching between both)
+Run server with: python3 app.py
+Currency format: R1 250.00 (South African Rand, space as thousands separator)
+VAT rate: 15% (South Africa)
+
+Upcoming Phases
+
+Next up — UI/UX changes: Before Phase 6, I need changes made to the existing pages (index, results, cart, checkout, order confirmation). I will describe these changes once you confirm you have read and understood this summary.
+Phase 6: UAT and PROD environments (Railway or Render — free hosting)
+Final phase: Full UI/UX refinement pass on everything
+
+
+We are currently on: Phase 5 complete. About to make UI/UX changes to existing pages before starting Phase 6.

@@ -5,9 +5,15 @@
 # Start: python3 app.py
 # Stop:  CTRL + C
 #
-# PHASE 5 FIX (this version):
+# PHASE 5 FIX:
 #   /payfast/notify correctly passes raw_body + received_signature
 #   to verify_itn_signature() instead of the old post_data dict
+#
+# UI/UX UPDATE:
+#   /results now handles three search modes:
+#     1. Vehicle search  — ?make=Toyota&model=Corolla&year=2018&engine=1.8
+#     2. Part number     — ?part_number=DP21232   (new — from part number search box)
+#     3. Category browse — ?category=Brake+Pads   (new — from clicking a category card)
 # =============================================================================
 
 from flask import Flask, request, jsonify, render_template, session, redirect
@@ -167,59 +173,206 @@ def home():
 @app.route('/results')
 def results():
     """
-    Results page — shows all parts that fit a searched vehicle.
-    URL: /results?make=Toyota&model=Corolla&year=2018
-    """
-    make   = request.args.get('make',   '').strip()
-    model  = request.args.get('model',  '').strip()
-    year   = request.args.get('year',   '').strip()
-    engine = request.args.get('engine', '').strip()
+    Results page — shows matching parts based on how the customer searched.
 
-    if not make:
-        return render_template('index.html')
+    There are now THREE ways to reach this page:
+
+    MODE 1 — Vehicle search (original):
+        URL: /results?make=Toyota&model=Corolla&year=2018&engine=1.8
+        How: Customer used the vehicle finder dropdowns
+        SQL: Joins vehicle_fitment → vehicles → products
+
+    MODE 2 — Part number search (new):
+        URL: /results?part_number=DP21232
+        How: Customer typed a part number into the search box
+        SQL: Searches the products table directly by part_number
+             Uses LIKE so partial matches work (e.g. "DP212" finds "DP21232")
+
+    MODE 3 — Category browse (new):
+        URL: /results?category=Brake+Pads
+        How: Customer clicked a category card on the home page
+        SQL: Returns all products in that category from the products table
+    """
+
+    # -----------------------------------------------------------------------
+    # Read all possible URL parameters
+    # .strip() removes any accidental spaces the browser might add
+    # -----------------------------------------------------------------------
+    make        = request.args.get('make',        '').strip()
+    model       = request.args.get('model',       '').strip()
+    year        = request.args.get('year',        '').strip()
+    engine      = request.args.get('engine',      '').strip()
+    part_number = request.args.get('part_number', '').strip()
+    category    = request.args.get('category',    '').strip()
 
     conn = get_db_connection()
-    sql  = '''
-        SELECT DISTINCT
-            p.part_number, p.category, p.srp_incl_vat, p.srp_excl_vat,
-            vf.product_type, vf.position,
-            v.make, v.model, v.sub_model, v.year, v.engine
-        FROM vehicle_fitment vf
-        JOIN vehicles v ON vf.vehicle_id  = v.id
-        JOIN products  p ON vf.part_number = p.part_number
-        WHERE v.make = ? AND v.model = ?
-    '''
-    params = [make, model]
-    if year:
-        sql += ' AND v.year = ?'
-        params.append(year)
-    if engine:
-        sql += ' AND v.engine = ?'
-        params.append(engine)
-    sql += ' ORDER BY p.category, vf.position'
 
-    parts      = conn.execute(sql, params).fetchall()
-    conn.close()
-    parts_list = [dict(row) for row in parts]
+    # -----------------------------------------------------------------------
+    # MODE 2: Part number search
+    # Triggered when ?part_number= is in the URL
+    # -----------------------------------------------------------------------
+    if part_number:
 
-    grouped = {}
-    for part in parts_list:
-        cat = part['category'] or 'Other'
-        if cat not in grouped:
-            grouped[cat] = []
-        grouped[cat].append(part)
+        print(f"🔍 Part number search: '{part_number}'")
 
-    cart_count = sum(item['quantity'] for item in session.get('cart', {}).values())
+        # Use LIKE with % wildcards so partial matches work.
+        # e.g. searching "DP212" will find "DP21232", "DP21274" etc.
+        # The UPPER() function makes the search case-insensitive
+        # so "dp21232" finds "DP21232"
+        search_term = f"%{part_number.upper()}%"
 
-    return render_template('results.html',
-        grouped_parts = grouped,
-        make          = make,
-        model         = model,
-        year          = year,
-        engine        = engine,
-        total_results = len(parts_list),
-        cart_count    = cart_count
-    )
+        rows = conn.execute(
+            '''
+            SELECT part_number, category, srp_incl_vat, srp_excl_vat
+            FROM products
+            WHERE UPPER(part_number) LIKE ?
+            ORDER BY part_number
+            ''',
+            (search_term,)
+        ).fetchall()
+
+        conn.close()
+
+        # Convert database rows into plain Python dicts
+        parts_list = [dict(row) for row in rows]
+
+        # Group parts by category (same format as vehicle search results)
+        # This means results.html works exactly the same for all 3 modes
+        grouped = {}
+        for part in parts_list:
+            cat = part['category'] or 'Other'
+            if cat not in grouped:
+                grouped[cat] = []
+            grouped[cat].append(part)
+
+        cart_count = sum(item['quantity'] for item in session.get('cart', {}).values())
+
+        # Pass search_mode so results.html can show the right heading
+        return render_template('results.html',
+            grouped_parts  = grouped,
+            total_results  = len(parts_list),
+            cart_count     = cart_count,
+            search_mode    = 'part_number',   # Tells template which heading to show
+            part_number    = part_number,      # Used in the results heading e.g. "Results for DP21232"
+            # Vehicle fields are empty for this mode
+            make           = '',
+            model          = '',
+            year           = '',
+            engine         = '',
+            category       = ''
+        )
+
+    # -----------------------------------------------------------------------
+    # MODE 3: Category browse
+    # Triggered when ?category= is in the URL (from clicking a category card)
+    # -----------------------------------------------------------------------
+    elif category:
+
+        print(f"🔍 Category browse: '{category}'")
+
+        rows = conn.execute(
+            '''
+            SELECT part_number, category, srp_incl_vat, srp_excl_vat
+            FROM products
+            WHERE category = ?
+            ORDER BY part_number
+            ''',
+            (category,)
+        ).fetchall()
+
+        conn.close()
+
+        parts_list = [dict(row) for row in rows]
+
+        # All parts in a category browse have the same category,
+        # so the grouped dict will have just one key.
+        grouped = {}
+        for part in parts_list:
+            cat = part['category'] or 'Other'
+            if cat not in grouped:
+                grouped[cat] = []
+            grouped[cat].append(part)
+
+        cart_count = sum(item['quantity'] for item in session.get('cart', {}).values())
+
+        return render_template('results.html',
+            grouped_parts  = grouped,
+            total_results  = len(parts_list),
+            cart_count     = cart_count,
+            search_mode    = 'category',      # Tells template which heading to show
+            category       = category,         # Used in the heading e.g. "Brake Pads"
+            # Vehicle fields are empty for this mode
+            make           = '',
+            model          = '',
+            year           = '',
+            engine         = '',
+            part_number    = ''
+        )
+
+    # -----------------------------------------------------------------------
+    # MODE 1: Vehicle search (original behaviour — unchanged)
+    # Triggered when ?make= and ?model= are in the URL
+    # -----------------------------------------------------------------------
+    elif make and model:
+
+        print(f"🔍 Vehicle search: {make} {model} {year} {engine}")
+
+        sql = '''
+            SELECT DISTINCT
+                p.part_number, p.category, p.srp_incl_vat, p.srp_excl_vat,
+                vf.product_type, vf.position,
+                v.make, v.model, v.sub_model, v.year, v.engine
+            FROM vehicle_fitment vf
+            JOIN vehicles v ON vf.vehicle_id  = v.id
+            JOIN products  p ON vf.part_number = p.part_number
+            WHERE v.make = ? AND v.model = ?
+        '''
+        params = [make, model]
+
+        # Year and engine are optional — only filter if provided
+        if year:
+            sql += ' AND v.year = ?'
+            params.append(year)
+        if engine:
+            sql += ' AND v.engine = ?'
+            params.append(engine)
+
+        sql += ' ORDER BY p.category, vf.position'
+
+        parts      = conn.execute(sql, params).fetchall()
+        conn.close()
+        parts_list = [dict(row) for row in parts]
+
+        # Group parts by category for display
+        grouped = {}
+        for part in parts_list:
+            cat = part['category'] or 'Other'
+            if cat not in grouped:
+                grouped[cat] = []
+            grouped[cat].append(part)
+
+        cart_count = sum(item['quantity'] for item in session.get('cart', {}).values())
+
+        return render_template('results.html',
+            grouped_parts  = grouped,
+            make           = make,
+            model          = model,
+            year           = year,
+            engine         = engine,
+            total_results  = len(parts_list),
+            cart_count     = cart_count,
+            search_mode    = 'vehicle',       # Tells template which heading to show
+            part_number    = '',
+            category       = ''
+        )
+
+    # -----------------------------------------------------------------------
+    # FALLBACK: No valid search parameters — send back to home page
+    # -----------------------------------------------------------------------
+    else:
+        conn.close()
+        print("⚠️  /results called with no valid search parameters — redirecting home")
+        return redirect('/')
 
 
 @app.route('/cart')
@@ -324,10 +477,6 @@ def payfast_notify():
 
     # ------------------------------------------------------------------
     # STEP 1: Verify the signature using the RAW body string.
-    # We pass three things:
-    #   1. raw_body           — the exact string PayFast sent us
-    #   2. received_signature — the signature PayFast included
-    #   3. passphrase         — our secret word from .env
     # ------------------------------------------------------------------
     passphrase = os.environ.get('PAYFAST_PASSPHRASE', '')
 
@@ -371,7 +520,6 @@ def payfast_notify():
     # ------------------------------------------------------------------
     if payment_status == 'COMPLETE':
 
-        # Mark the order as paid ✅
         conn.execute('''
             UPDATE orders
             SET payment_status     = 'paid',
@@ -381,19 +529,16 @@ def payfast_notify():
         ''', (pf_payment_id, order_number))
         conn.commit()
 
-        # Get order items for the confirmation email
         items = conn.execute(
             'SELECT * FROM order_items WHERE order_id = ?', (order['id'],)
         ).fetchall()
 
-        # Build updated order dict to pass to the email function
         order_dict                   = dict(order)
         order_dict['payment_status'] = 'paid'
         order_dict['status']         = 'confirmed'
 
         print(f"✅ Payment CONFIRMED for {order_number} | PayFast ID: {pf_payment_id}")
 
-        # Send the customer their confirmation email
         send_order_email(order_dict, [dict(i) for i in items])
 
     elif payment_status == 'FAILED':
@@ -405,7 +550,6 @@ def payfast_notify():
         print(f"❌ Payment FAILED for {order_number}")
 
     elif payment_status == 'PENDING':
-        # Customer chose EFT — waiting for bank to clear
         conn.execute('''
             UPDATE orders SET payment_status = 'pending_payment'
             WHERE order_number = ?
@@ -414,9 +558,6 @@ def payfast_notify():
         print(f"⏳ Payment PENDING (EFT) for {order_number}")
 
     conn.close()
-
-    # Always return plain "OK" with HTTP 200.
-    # Any other response causes PayFast to keep retrying.
     return 'OK', 200
 
 

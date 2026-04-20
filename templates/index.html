@@ -14,14 +14,14 @@
            CSS VARIABLES — change these to retheme the entire site
         =========================================================== */
         :root {
-            --orange      : #FF6200;       /* Primary brand orange */
-            --orange-dark : #CC4E00;       /* Darker orange for hover states */
-            --orange-glow : rgba(255,98,0,0.15); /* Soft orange glow */
-            --black       : #0D0D0D;       /* Near-black background */
-            --black-card  : #161616;       /* Slightly lighter for cards */
-            --black-border: #2A2A2A;       /* Subtle borders */
+            --orange      : #FF6200;
+            --orange-dark : #CC4E00;
+            --orange-glow : rgba(255,98,0,0.15);
+            --black       : #0D0D0D;
+            --black-card  : #161616;
+            --black-border: #2A2A2A;
             --white       : #FFFFFF;
-            --grey-light  : #AAAAAA;       /* Muted text */
+            --grey-light  : #AAAAAA;
             --grey-mid    : #555555;
             --font-head   : 'Barlow Condensed', sans-serif;
             --font-body   : 'DM Sans', sans-serif;
@@ -31,9 +31,7 @@
            RESET & BASE
         =========================================================== */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
         html { scroll-behavior: smooth; }
-
         body {
             background-color : var(--black);
             color            : var(--white);
@@ -42,7 +40,6 @@
             line-height      : 1.6;
             overflow-x       : hidden;
         }
-
         a { color: var(--orange); text-decoration: none; }
         a:hover { color: var(--orange-dark); }
 
@@ -50,7 +47,7 @@
            NAVIGATION
         =========================================================== */
         nav {
-            position         : fixed;          /* Sticks to top when scrolling */
+            position         : fixed;
             top              : 0;
             left             : 0;
             right            : 0;
@@ -62,7 +59,7 @@
             height           : 70px;
             background       : rgba(13,13,13,0.95);
             border-bottom    : 1px solid var(--black-border);
-            backdrop-filter  : blur(10px);     /* Frosted glass effect */
+            backdrop-filter  : blur(10px);
         }
 
         .nav-logo {
@@ -71,7 +68,6 @@
             gap         : 12px;
         }
 
-        /* The orange square logo mark */
         .nav-logo-mark {
             width            : 38px;
             height           : 38px;
@@ -143,7 +139,7 @@
             overflow         : hidden;
         }
 
-        /* Animated diagonal stripe background */
+        /* Diagonal stripe background */
         .hero::before {
             content    : '';
             position   : absolute;
@@ -158,7 +154,7 @@
             pointer-events: none;
         }
 
-        /* Large glowing orb behind the text */
+        /* Glowing orb behind text */
         .hero::after {
             content       : '';
             position      : absolute;
@@ -184,7 +180,7 @@
 
         .hero-title {
             font-family    : var(--font-head);
-            font-size      : clamp(52px, 8vw, 96px); /* Scales with screen size */
+            font-size      : clamp(52px, 8vw, 96px);
             font-weight    : 800;
             line-height    : 0.95;
             text-align     : center;
@@ -246,9 +242,7 @@
             color          : var(--white);
         }
 
-        .finder-title span {
-            color : var(--orange);
-        }
+        .finder-title span { color: var(--orange); }
 
         /* Grid layout for the 4 dropdowns */
         .finder-grid {
@@ -258,7 +252,6 @@
             margin-bottom         : 16px;
         }
 
-        /* Stack to 2 columns on smaller screens */
         @media (max-width: 700px) {
             .finder-grid { grid-template-columns: repeat(2, 1fr); }
             nav { padding: 0 20px; }
@@ -290,8 +283,7 @@
             font-size     : 14px;
             cursor        : pointer;
             transition    : border-color 0.2s;
-            appearance    : none;   /* Remove default browser styling */
-            /* Custom dropdown arrow in orange */
+            appearance    : none;
             background-image    : url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23FF6200' stroke-width='2' fill='none'/%3E%3C/svg%3E");
             background-repeat   : no-repeat;
             background-position : right 14px center;
@@ -308,7 +300,7 @@
             cursor  : not-allowed;
         }
 
-        /* Search button - full width below the dropdowns */
+        /* Main vehicle search button */
         .btn-search {
             width          : 100%;
             padding        : 16px;
@@ -340,6 +332,113 @@
         }
 
         /* ===========================================================
+           OR DIVIDER — separates vehicle search from part number search
+        =========================================================== */
+        .or-divider {
+            display     : flex;
+            align-items : center;
+            gap         : 16px;
+            margin      : 28px 0 24px;  /* Space above and below the divider */
+        }
+
+        /* The horizontal lines on either side of "OR" */
+        .or-divider::before,
+        .or-divider::after {
+            content    : '';
+            flex       : 1;            /* Stretch to fill available space */
+            height     : 1px;
+            background : var(--black-border);
+        }
+
+        /* The "OR" text badge */
+        .or-divider span {
+            font-size      : 11px;
+            font-weight    : 600;
+            letter-spacing : 3px;
+            text-transform : uppercase;
+            color          : var(--grey-mid);
+            padding        : 4px 12px;
+            border         : 1px solid var(--black-border);
+            flex-shrink    : 0;        /* Don't let it shrink */
+        }
+
+        /* ===========================================================
+           PART NUMBER SEARCH — the new section below the vehicle finder
+        =========================================================== */
+        .part-number-section {
+            /* No extra margin needed — or-divider handles spacing */
+        }
+
+        .part-number-label {
+            font-size      : 11px;
+            font-weight    : 600;
+            letter-spacing : 2px;
+            text-transform : uppercase;
+            color          : var(--grey-light);
+            margin-bottom  : 8px;
+            display        : block;   /* Makes it sit on its own line */
+        }
+
+        /* Wrapper that puts the input and button side by side */
+        .part-number-row {
+            display : flex;
+            gap     : 12px;
+        }
+
+        /* The text input box */
+        .part-number-input {
+            flex          : 1;         /* Stretch to fill all available space */
+            background    : var(--black);
+            border        : 1px solid var(--black-border);
+            color         : var(--white);
+            padding       : 12px 16px;
+            font-family   : var(--font-body);
+            font-size     : 15px;
+            transition    : border-color 0.2s;
+            outline       : none;
+        }
+
+        .part-number-input::placeholder {
+            color       : var(--grey-mid);
+            font-size   : 14px;
+        }
+
+        .part-number-input:focus {
+            border-color : var(--orange);
+        }
+
+        /* The "Find Product" button next to the input */
+        .btn-part-search {
+            background     : transparent;
+            color          : var(--orange);
+            border         : 2px solid var(--orange);
+            padding        : 12px 24px;
+            font-family    : var(--font-head);
+            font-size      : 16px;
+            font-weight    : 700;
+            letter-spacing : 1px;
+            text-transform : uppercase;
+            cursor         : pointer;
+            transition     : background 0.2s, color 0.2s, transform 0.1s;
+            white-space    : nowrap;   /* Keep text on one line */
+        }
+
+        .btn-part-search:hover {
+            background : var(--orange);
+            color      : var(--black);
+            transform  : translateY(-1px);
+        }
+
+        .btn-part-search:active { transform: translateY(0); }
+
+        /* Small hint text below the part number input */
+        .part-number-hint {
+            margin-top : 8px;
+            font-size  : 12px;
+            color      : var(--grey-mid);
+        }
+
+        /* ===========================================================
            STATS BAR
         =========================================================== */
         .stats-bar {
@@ -353,22 +452,20 @@
             flex-wrap      : wrap;
         }
 
-        .stat-item {
-            text-align : center;
-        }
+        .stat-item { text-align: center; }
 
         .stat-number {
-            font-family    : var(--font-head);
-            font-size      : 42px;
-            font-weight    : 800;
-            color          : var(--orange);
-            line-height    : 1;
+            font-family : var(--font-head);
+            font-size   : 42px;
+            font-weight : 800;
+            color       : var(--orange);
+            line-height : 1;
         }
 
         .stat-label {
-            font-size  : 13px;
-            color      : var(--grey-light);
-            margin-top : 4px;
+            font-size     : 13px;
+            color         : var(--grey-light);
+            margin-top    : 4px;
             letter-spacing: 1px;
         }
 
@@ -376,9 +473,9 @@
            SECTION SHARED STYLES
         =========================================================== */
         section {
-            padding : 80px 40px;
-            max-width: 1200px;
-            margin   : 0 auto;
+            padding   : 80px 40px;
+            max-width : 1200px;
+            margin    : 0 auto;
         }
 
         .section-eyebrow {
@@ -408,58 +505,119 @@
         }
 
         /* ===========================================================
-           CATEGORY BROWSER
+           CATEGORY BROWSER — image-based cards
         =========================================================== */
-        .categories-section {
-            background : var(--black);
-        }
+        .categories-section { background: var(--black); }
 
         .categories-grid {
             display               : grid;
-            grid-template-columns : repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns : repeat(auto-fill, minmax(220px, 1fr));
             gap                   : 16px;
         }
 
+        /* Each category card is now a clickable link */
         .category-card {
-            background    : var(--black-card);
-            border        : 1px solid var(--black-border);
-            padding       : 28px 24px;
-            cursor        : pointer;
-            transition    : border-color 0.2s, transform 0.2s;
-            position      : relative;
-            overflow      : hidden;
+            display        : block;                /* Makes the <a> tag act like a block */
+            background     : var(--black-card);
+            border         : 1px solid var(--black-border);
+            cursor         : pointer;
+            transition     : border-color 0.25s, transform 0.25s;
+            position       : relative;
+            overflow       : hidden;
+            text-decoration: none;                 /* Remove underline from link */
+            color          : var(--white);         /* Keep text white */
         }
 
+        /* Orange bottom bar that slides in on hover */
         .category-card::after {
-            content     : '';
-            position    : absolute;
-            bottom      : 0;
-            left        : 0;
-            right       : 0;
-            height      : 3px;
-            background  : var(--orange);
-            transform   : scaleX(0);
-            transition  : transform 0.2s;
+            content    : '';
+            position   : absolute;
+            bottom     : 0;
+            left       : 0;
+            right      : 0;
+            height     : 3px;
+            background : var(--orange);
+            transform  : scaleX(0);
+            transition : transform 0.25s;
         }
 
         .category-card:hover {
             border-color : var(--orange);
-            transform    : translateY(-3px);
+            transform    : translateY(-4px);
         }
 
         .category-card:hover::after { transform: scaleX(1); }
 
-        .category-icon {
-            font-size     : 32px;
-            margin-bottom : 12px;
+        /* ===========================================================
+           IMAGE AREA of the category card
+           This is the top portion that shows the product image
+        =========================================================== */
+        .category-card-image {
+            width            : 100%;
+            height           : 180px;              /* Fixed height for all image areas */
+            background-color : #F4F4F4;            /* Light grey — stops white-background product images getting lost */
+            display          : flex;
+            align-items      : center;
+            justify-content  : center;
+            overflow         : hidden;
+            position         : relative;
+        }
+
+        /* The actual <img> tag inside the image area */
+        .category-card-image img {
+            width      : 100%;
+            height     : 100%;
+            object-fit : cover;                    /* Crop/fill without distortion */
+            transition : transform 0.3s;
+        }
+
+        /* Zoom image slightly on hover for a nice effect */
+        .category-card:hover .category-card-image img {
+            transform : scale(1.05);
+        }
+
+        /* ===========================================================
+           PLACEHOLDER — shown when no image is available yet
+           This is a styled coloured box with the emoji + text
+        =========================================================== */
+        .category-placeholder {
+            width      : 100%;
+            height     : 100%;
+            display    : flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap        : 8px;
+            background : linear-gradient(135deg, #1a1a1a 0%, #222222 100%);
+            border-bottom: 2px solid var(--black-border);
+        }
+
+        .placeholder-icon {
+            font-size   : 36px;
+            line-height : 1;
+        }
+
+        .placeholder-text {
+            font-size      : 10px;
+            letter-spacing : 2px;
+            text-transform : uppercase;
+            color          : var(--grey-mid);
+        }
+
+        /* ===========================================================
+           TEXT AREA at the bottom of the category card
+        =========================================================== */
+        .category-card-body {
+            padding : 16px 20px 20px;
         }
 
         .category-name {
             font-family    : var(--font-head);
-            font-size      : 18px;
+            font-size      : 20px;
             font-weight    : 700;
             text-transform : uppercase;
             letter-spacing : 0.5px;
+            line-height    : 1.1;
         }
 
         .category-count {
@@ -468,12 +626,30 @@
             margin-top : 4px;
         }
 
+        /* Small "SHOP NOW →" label that appears on hover */
+        .category-cta {
+            font-family    : var(--font-head);
+            font-size      : 13px;
+            font-weight    : 700;
+            letter-spacing : 1.5px;
+            text-transform : uppercase;
+            color          : var(--orange);
+            margin-top     : 10px;
+            display        : block;
+            opacity        : 0;           /* Hidden by default */
+            transition     : opacity 0.2s;
+        }
+
+        .category-card:hover .category-cta {
+            opacity : 1;                  /* Fade in on hover */
+        }
+
         /* ===========================================================
            PRODUCT INFO / WHY EBC SECTION
         =========================================================== */
         .info-section {
-            background : var(--black-card);
-            border-top : 1px solid var(--black-border);
+            background   : var(--black-card);
+            border-top   : 1px solid var(--black-border);
             border-bottom: 1px solid var(--black-border);
         }
 
@@ -491,8 +667,8 @@
         }
 
         @media (max-width: 768px) {
-            .info-grid { grid-template-columns: 1fr; gap: 40px; }
-            .stats-bar { gap: 40px; }
+            .info-grid  { grid-template-columns: 1fr; gap: 40px; }
+            .stats-bar  { gap: 40px; }
         }
 
         .info-text .section-sub { max-width: 100%; }
@@ -510,20 +686,19 @@
             align-items: flex-start;
         }
 
-        /* Orange bullet square */
         .feature-dot {
-            width            : 10px;
-            height           : 10px;
-            background       : var(--orange);
-            margin-top       : 6px;
-            flex-shrink      : 0;
+            width       : 10px;
+            height      : 10px;
+            background  : var(--orange);
+            margin-top  : 6px;
+            flex-shrink : 0;
         }
 
         .feature-item strong {
-            display    : block;
-            font-size  : 15px;
-            font-weight: 600;
-            margin-bottom: 2px;
+            display       : block;
+            font-size     : 15px;
+            font-weight   : 600;
+            margin-bottom : 2px;
         }
 
         .feature-item p {
@@ -531,7 +706,6 @@
             color     : var(--grey-light);
         }
 
-        /* Right column - product range cards */
         .range-cards {
             display               : grid;
             grid-template-columns : 1fr 1fr;
@@ -539,9 +713,9 @@
         }
 
         .range-card {
-            background  : var(--black);
-            border      : 1px solid var(--black-border);
-            padding     : 20px;
+            background : var(--black);
+            border     : 1px solid var(--black-border);
+            padding    : 20px;
         }
 
         .range-card-name {
@@ -562,19 +736,19 @@
            FOOTER
         =========================================================== */
         footer {
-            background     : var(--black-card);
-            border-top     : 1px solid var(--black-border);
-            padding        : 48px 40px 32px;
+            background : var(--black-card);
+            border-top : 1px solid var(--black-border);
+            padding    : 48px 40px 32px;
         }
 
         .footer-inner {
-            max-width       : 1200px;
-            margin          : 0 auto;
-            display         : grid;
+            max-width            : 1200px;
+            margin               : 0 auto;
+            display              : grid;
             grid-template-columns: 2fr 1fr 1fr;
-            gap             : 48px;
-            padding-bottom  : 40px;
-            border-bottom   : 1px solid var(--black-border);
+            gap                  : 48px;
+            padding-bottom       : 40px;
+            border-bottom        : 1px solid var(--black-border);
         }
 
         @media (max-width: 768px) {
@@ -582,6 +756,8 @@
             section { padding: 60px 20px; }
             .info-section > div { padding: 60px 20px; }
             footer { padding: 40px 20px 24px; }
+            .part-number-row { flex-direction: column; }
+            .btn-part-search { width: 100%; }
         }
 
         .footer-brand p {
@@ -602,10 +778,10 @@
         }
 
         .footer-col ul {
-            list-style : none;
-            display    : flex;
+            list-style    : none;
+            display       : flex;
             flex-direction: column;
-            gap        : 10px;
+            gap           : 10px;
         }
 
         .footer-col ul li a {
@@ -617,13 +793,13 @@
         .footer-col ul li a:hover { color: var(--orange); }
 
         .footer-bottom {
-            max-width   : 1200px;
-            margin      : 24px auto 0;
-            display     : flex;
+            max-width      : 1200px;
+            margin         : 24px auto 0;
+            display        : flex;
             justify-content: space-between;
-            align-items : center;
-            font-size   : 13px;
-            color       : var(--grey-mid);
+            align-items    : center;
+            font-size      : 13px;
+            color          : var(--grey-mid);
         }
 
         /* ===========================================================
@@ -634,7 +810,6 @@
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* Loading state for dropdowns */
         select.loading {
             background-image : url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' stroke='%23FF6200' stroke-width='2' fill='none' stroke-dasharray='20' stroke-dashoffset='20'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 8 8' to='360 8 8' dur='1s' repeatCount='indefinite'/%3E%3C/circle%3E%3C/svg%3E");
         }
@@ -679,13 +854,15 @@
             Delivered to your door across South Africa.
         </p>
 
-        <!-- Vehicle Finder Card -->
+        <!-- -----------------------------------------------
+             Vehicle Finder Card
+        ----------------------------------------------- -->
         <div class="finder-card">
             <p class="finder-title">🔍 Find Parts for <span>Your Vehicle</span></p>
 
+            <!-- The 4 cascading dropdowns: Make → Model → Year → Engine -->
             <div class="finder-grid">
 
-                <!-- MAKE dropdown - populated by JavaScript on page load -->
                 <div class="finder-group">
                     <label for="sel-make">Make</label>
                     <select id="sel-make" onchange="onMakeChange()">
@@ -693,7 +870,6 @@
                     </select>
                 </div>
 
-                <!-- MODEL dropdown - disabled until Make is selected -->
                 <div class="finder-group">
                     <label for="sel-model">Model</label>
                     <select id="sel-model" disabled onchange="onModelChange()">
@@ -701,7 +877,6 @@
                     </select>
                 </div>
 
-                <!-- YEAR dropdown - disabled until Model is selected -->
                 <div class="finder-group">
                     <label for="sel-year">Year</label>
                     <select id="sel-year" disabled onchange="onYearChange()">
@@ -709,7 +884,6 @@
                     </select>
                 </div>
 
-                <!-- ENGINE dropdown - disabled until Year is selected -->
                 <div class="finder-group">
                     <label for="sel-engine">Engine</label>
                     <select id="sel-engine" disabled>
@@ -719,6 +893,7 @@
 
             </div>
 
+            <!-- Vehicle search button -->
             <button class="btn-search" onclick="searchParts()">
                 Find My Brake Parts →
             </button>
@@ -726,7 +901,48 @@
             <p class="finder-note">
                 Select your Make and Model to search — Year and Engine are optional refinements
             </p>
-        </div>
+
+            <!-- -----------------------------------------------
+                 OR DIVIDER
+                 Visually separates the two search methods
+            ----------------------------------------------- -->
+            <div class="or-divider">
+                <span>OR</span>
+            </div>
+
+            <!-- -----------------------------------------------
+                 PART NUMBER SEARCH
+                 For customers who already know their EBC part number
+            ----------------------------------------------- -->
+            <div class="part-number-section">
+
+                <label class="part-number-label" for="part-number-input">
+                    Know Your EBC Part Number?
+                </label>
+
+                <!-- Input and button sit side by side in this row -->
+                <div class="part-number-row">
+                    <input
+                        type        = "text"
+                        id          = "part-number-input"
+                        class       = "part-number-input"
+                        placeholder = "e.g. DP21232"
+                        maxlength   = "30"
+                        onkeydown   = "if(event.key === 'Enter') searchByPartNumber()"
+                    />
+                    <!-- Outlined style button to look different from the main orange button above -->
+                    <button class="btn-part-search" onclick="searchByPartNumber()">
+                        Find My Product →
+                    </button>
+                </div>
+
+                <p class="part-number-hint">
+                    Enter the full EBC part number — you can find it on your existing packaging or invoice
+                </p>
+
+            </div><!-- end .part-number-section -->
+
+        </div><!-- end .finder-card -->
 
     </div><!-- end .hero -->
 
@@ -767,7 +983,6 @@
 
         <!-- Category cards are injected here by JavaScript -->
         <div class="categories-grid" id="categories-grid">
-            <!-- Loading state -->
             <p style="color: var(--grey-light);">Loading categories...</p>
         </div>
     </section>
@@ -780,7 +995,6 @@
         <div>
             <div class="info-grid">
 
-                <!-- Left: Text info -->
                 <div class="info-text">
                     <p class="section-eyebrow">Why EBC Brakes</p>
                     <h2 class="section-title">Built for Performance.<br>Engineered for Safety.</h2>
@@ -834,63 +1048,38 @@
                 <!-- Right: EBC product range cards -->
                 <div>
                     <div class="range-cards">
-
                         <div class="range-card">
                             <div class="range-card-name">Greenstuff</div>
-                            <div class="range-card-desc">
-                                Street & city driving. Low dust, quiet, excellent cold bite.
-                            </div>
+                            <div class="range-card-desc">Street & city driving. Low dust, quiet, excellent cold bite.</div>
                         </div>
-
                         <div class="range-card">
                             <div class="range-card-name">Redstuff</div>
-                            <div class="range-card-desc">
-                                Performance street. Ceramic compound for fast road driving.
-                            </div>
+                            <div class="range-card-desc">Performance street. Ceramic compound for fast road driving.</div>
                         </div>
-
                         <div class="range-card">
                             <div class="range-card-name">Yellowstuff</div>
-                            <div class="range-card-desc">
-                                Track day & performance. High-temp compound, strong bite.
-                            </div>
+                            <div class="range-card-desc">Track day & performance. High-temp compound, strong bite.</div>
                         </div>
-
                         <div class="range-card">
                             <div class="range-card-name">Bluestuff NDX</div>
-                            <div class="range-card-desc">
-                                Race & trackday. NDX formula, consistent fade-free braking.
-                            </div>
+                            <div class="range-card-desc">Race & trackday. NDX formula, consistent fade-free braking.</div>
                         </div>
-
                         <div class="range-card">
                             <div class="range-card-name">RP-1 / RP-X</div>
-                            <div class="range-card-desc">
-                                Full race compounds. Maximum braking at extreme temperatures.
-                            </div>
+                            <div class="range-card-desc">Full race compounds. Maximum braking at extreme temperatures.</div>
                         </div>
-
                         <div class="range-card">
                             <div class="range-card-name">Ultimax Discs</div>
-                            <div class="range-card-desc">
-                                Grooved & slotted rotors for improved bite and heat dispersal.
-                            </div>
+                            <div class="range-card-desc">Grooved & slotted rotors for improved bite and heat dispersal.</div>
                         </div>
-
                         <div class="range-card">
                             <div class="range-card-name">Brake Lines</div>
-                            <div class="range-card-desc">
-                                Stainless braided lines for firm pedal feel and better response.
-                            </div>
+                            <div class="range-card-desc">Stainless braided lines for firm pedal feel and better response.</div>
                         </div>
-
                         <div class="range-card">
                             <div class="range-card-name">Brake Kits</div>
-                            <div class="range-card-desc">
-                                Matched pad and disc kits — everything you need in one box.
-                            </div>
+                            <div class="range-card-desc">Matched pad and disc kits — everything you need in one box.</div>
                         </div>
-
                     </div>
                 </div>
 
@@ -950,150 +1139,26 @@
 
 
     <!-- =====================================================
-         JAVASCRIPT — Powers all dynamic behaviour
+         JAVASCRIPT
     ===================================================== -->
     <script>
-    // ================================================================
-    // VEHICLE FINDER LOGIC
-    // Each dropdown is loaded from our API based on what was selected
-    // before it. This is called "cascading dropdowns".
-    // ================================================================
-
-    // Run this as soon as the page loads - populates the Make dropdown
-    window.addEventListener('DOMContentLoaded', function () {
-        loadMakes();
-        loadCategories();
-        loadStats();
-    });
-
-    // ---- Load all Makes into the first dropdown --------------------
-    function loadMakes() {
-        fetch('/api/makes')
-            .then(response => response.json())
-            .then(makes => {
-                const sel = document.getElementById('sel-make');
-                makes.forEach(make => {
-                    const opt = document.createElement('option');
-                    opt.value = make;
-                    opt.textContent = make;
-                    sel.appendChild(opt);
-                });
-            })
-            .catch(err => console.error('Could not load makes:', err));
-    }
-
-    // ---- When Make changes, load Models ---------------------------
-    function onMakeChange() {
-        const make = document.getElementById('sel-make').value;
-
-        // Reset all downstream dropdowns first
-        resetDropdown('sel-model', 'Select Model');
-        resetDropdown('sel-year',  'Select Year');
-        resetDropdown('sel-engine','Select Engine');
-
-        if (!make) return;  // Nothing selected, stop here
-
-        const modelSel = document.getElementById('sel-model');
-        modelSel.disabled = true;
-
-        fetch(`/api/models?make=${encodeURIComponent(make)}`)
-            .then(r => r.json())
-            .then(models => {
-                models.forEach(model => {
-                    const opt = document.createElement('option');
-                    opt.value = model;
-                    opt.textContent = model;
-                    modelSel.appendChild(opt);
-                });
-                modelSel.disabled = false;  // Enable once loaded
-            });
-    }
-
-    // ---- When Model changes, load Years ---------------------------
-    function onModelChange() {
-        const make  = document.getElementById('sel-make').value;
-        const model = document.getElementById('sel-model').value;
-
-        resetDropdown('sel-year',  'Select Year');
-        resetDropdown('sel-engine','Select Engine');
-
-        if (!model) return;
-
-        const yearSel = document.getElementById('sel-year');
-        yearSel.disabled = true;
-
-        fetch(`/api/years?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`)
-            .then(r => r.json())
-            .then(years => {
-                years.forEach(year => {
-                    const opt = document.createElement('option');
-                    opt.value = year;
-                    opt.textContent = year;
-                    yearSel.appendChild(opt);
-                });
-                yearSel.disabled = false;
-            });
-    }
-
-    // ---- When Year changes, load Engines --------------------------
-    function onYearChange() {
-        const make  = document.getElementById('sel-make').value;
-        const model = document.getElementById('sel-model').value;
-        const year  = document.getElementById('sel-year').value;
-
-        resetDropdown('sel-engine', 'Select Engine');
-
-        if (!year) return;
-
-        const engSel = document.getElementById('sel-engine');
-        engSel.disabled = true;
-
-        fetch(`/api/engines?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&year=${encodeURIComponent(year)}`)
-            .then(r => r.json())
-            .then(engines => {
-                engines.forEach(engine => {
-                    const opt = document.createElement('option');
-                    opt.value = engine;
-                    opt.textContent = engine;
-                    engSel.appendChild(opt);
-                });
-                engSel.disabled = false;
-            });
-    }
-
-    // ---- Search button: redirect to results page ------------------
-    function searchParts() {
-        const make   = document.getElementById('sel-make').value;
-        const model  = document.getElementById('sel-model').value;
-        const year   = document.getElementById('sel-year').value;
-        const engine = document.getElementById('sel-engine').value;
-
-        // Must have at least Make and Model
-        if (!make || !model) {
-            alert('Please select at least a Make and Model to search.');
-            return;
-        }
-
-        // Build URL query string and navigate to results page
-        const params = new URLSearchParams({ make, model });
-        if (year)   params.append('year', year);
-        if (engine) params.append('engine', engine);
-
-        window.location.href = `/results?${params.toString()}`;
-    }
-
-    // ---- Helper: reset a dropdown back to default -----------------
-    function resetDropdown(id, placeholder) {
-        const sel = document.getElementById(id);
-        sel.innerHTML = `<option value="">${placeholder}</option>`;
-        sel.disabled  = true;
-    }
 
     // ================================================================
-    // CATEGORY CARDS — loaded from our API
+    // IMAGES FOR CATEGORY CARDS
+    // Add the real image URL next to the category name.
+    // If no image is provided, a styled placeholder is shown instead.
+    // When you have a new image, just add it here like the Brake Kit example.
     // ================================================================
+    const CATEGORY_IMAGES = {
+        // REAL IMAGES — direct URLs to product photos
+        'Brake Kit' : 'https://www.ebcbrakes.com/wp-content/uploads/2021/05/Auto_BBK_6_Pot_caliper_02_RGB_White_BG-1-1000x770.png',
 
-    // Maps category names to emoji icons for the cards
+        // ADD MORE HERE when you have them, for example:
+        // 'Brake Pads'  : 'https://www.example.com/brake-pads.jpg',
+        // 'Brake Disc'  : 'https://www.example.com/brake-disc.jpg',
+    };
+
+    // Emoji icons used in the placeholder when no image is available yet
     const CATEGORY_ICONS = {
         'Brake Pads'              : '🔴',
         'Brake Disc'              : '⚙️',
@@ -1110,22 +1175,196 @@
         'Other'                   : '🔑',
     };
 
+    // ================================================================
+    // PAGE LOAD — runs everything when the page is ready
+    // ================================================================
+    window.addEventListener('DOMContentLoaded', function () {
+        loadMakes();
+        loadCategories();
+        loadStats();
+    });
+
+    // ================================================================
+    // VEHICLE FINDER — cascading dropdowns
+    // ================================================================
+
+    function loadMakes() {
+        fetch('/api/makes')
+            .then(response => response.json())
+            .then(makes => {
+                const sel = document.getElementById('sel-make');
+                makes.forEach(make => {
+                    const opt = document.createElement('option');
+                    opt.value = make;
+                    opt.textContent = make;
+                    sel.appendChild(opt);
+                });
+            })
+            .catch(err => console.error('Could not load makes:', err));
+    }
+
+    function onMakeChange() {
+        const make = document.getElementById('sel-make').value;
+        resetDropdown('sel-model', 'Select Model');
+        resetDropdown('sel-year',  'Select Year');
+        resetDropdown('sel-engine','Select Engine');
+        if (!make) return;
+
+        const modelSel = document.getElementById('sel-model');
+        modelSel.disabled = true;
+        fetch(`/api/models?make=${encodeURIComponent(make)}`)
+            .then(r => r.json())
+            .then(models => {
+                models.forEach(model => {
+                    const opt = document.createElement('option');
+                    opt.value = model;
+                    opt.textContent = model;
+                    modelSel.appendChild(opt);
+                });
+                modelSel.disabled = false;
+            });
+    }
+
+    function onModelChange() {
+        const make  = document.getElementById('sel-make').value;
+        const model = document.getElementById('sel-model').value;
+        resetDropdown('sel-year',  'Select Year');
+        resetDropdown('sel-engine','Select Engine');
+        if (!model) return;
+
+        const yearSel = document.getElementById('sel-year');
+        yearSel.disabled = true;
+        fetch(`/api/years?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`)
+            .then(r => r.json())
+            .then(years => {
+                years.forEach(year => {
+                    const opt = document.createElement('option');
+                    opt.value = year;
+                    opt.textContent = year;
+                    yearSel.appendChild(opt);
+                });
+                yearSel.disabled = false;
+            });
+    }
+
+    function onYearChange() {
+        const make  = document.getElementById('sel-make').value;
+        const model = document.getElementById('sel-model').value;
+        const year  = document.getElementById('sel-year').value;
+        resetDropdown('sel-engine', 'Select Engine');
+        if (!year) return;
+
+        const engSel = document.getElementById('sel-engine');
+        engSel.disabled = true;
+        fetch(`/api/engines?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&year=${encodeURIComponent(year)}`)
+            .then(r => r.json())
+            .then(engines => {
+                engines.forEach(engine => {
+                    const opt = document.createElement('option');
+                    opt.value = engine;
+                    opt.textContent = engine;
+                    engSel.appendChild(opt);
+                });
+                engSel.disabled = false;
+            });
+    }
+
+    // Redirects to results page with vehicle details as URL parameters
+    function searchParts() {
+        const make   = document.getElementById('sel-make').value;
+        const model  = document.getElementById('sel-model').value;
+        const year   = document.getElementById('sel-year').value;
+        const engine = document.getElementById('sel-engine').value;
+
+        if (!make || !model) {
+            alert('Please select at least a Make and Model to search.');
+            return;
+        }
+
+        const params = new URLSearchParams({ make, model });
+        if (year)   params.append('year', year);
+        if (engine) params.append('engine', engine);
+        window.location.href = `/results?${params.toString()}`;
+    }
+
+    // ================================================================
+    // PART NUMBER SEARCH — new feature
+    // Sends the customer to the results page filtered by part number
+    // ================================================================
+    function searchByPartNumber() {
+        // Get and clean the input — trim removes spaces from start/end
+        const partNumber = document.getElementById('part-number-input').value.trim();
+
+        // Tell the user if the box is empty
+        if (!partNumber) {
+            alert('Please enter an EBC part number to search.');
+            return;
+        }
+
+        // Send them to the results page with the part number as a URL parameter.
+        // Your results page (results.html + app.py) will need to handle ?part_number=DP21232
+        // We will wire this up in app.py in the next step.
+        const params = new URLSearchParams({ part_number: partNumber });
+        window.location.href = `/results?${params.toString()}`;
+    }
+
+    // ================================================================
+    // CATEGORY CARDS — builds image cards from the API
+    // ================================================================
     function loadCategories() {
         fetch('/api/categories')
             .then(r => r.json())
             .then(categories => {
                 const grid = document.getElementById('categories-grid');
-                grid.innerHTML = '';  // Clear loading message
+                grid.innerHTML = '';
 
                 categories.forEach(cat => {
-                    const icon = CATEGORY_ICONS[cat.category] || '🔑';
-                    const card = document.createElement('div');
+                    const name  = cat.category;
+                    const count = cat.count;
+                    const image = CATEGORY_IMAGES[name];  // May be undefined if no image yet
+                    const icon  = CATEGORY_ICONS[name] || '🔑';
+
+                    // Build the URL this card should link to
+                    // Clicking "Brake Pads" goes to /results?category=Brake+Pads
+                    const url = `/results?category=${encodeURIComponent(name)}`;
+
+                    // Build the image or placeholder HTML for the top of the card
+                    let imageHTML;
+                    if (image) {
+                        // We have a real image URL — show it
+                        imageHTML = `
+                            <div class="category-card-image">
+                                <img
+                                    src="${image}"
+                                    alt="${name}"
+                                    loading="lazy"
+                                    onerror="this.parentElement.innerHTML = buildPlaceholder('${icon}')"
+                                />
+                            </div>`;
+                    } else {
+                        // No image yet — show the styled placeholder
+                        imageHTML = `
+                            <div class="category-card-image">
+                                <div class="category-placeholder">
+                                    <div class="placeholder-icon">${icon}</div>
+                                    <div class="placeholder-text">Image Coming Soon</div>
+                                </div>
+                            </div>`;
+                    }
+
+                    // Create the full card as a clickable <a> link
+                    const card = document.createElement('a');
                     card.className = 'category-card';
+                    card.href      = url;
                     card.innerHTML = `
-                        <div class="category-icon">${icon}</div>
-                        <div class="category-name">${cat.category}</div>
-                        <div class="category-count">${cat.count.toLocaleString()} parts</div>
+                        ${imageHTML}
+                        <div class="category-card-body">
+                            <div class="category-name">${name}</div>
+                            <div class="category-count">${count.toLocaleString()} parts</div>
+                            <span class="category-cta">Shop Now →</span>
+                        </div>
                     `;
+
                     grid.appendChild(card);
                 });
             })
@@ -1135,43 +1374,45 @@
             });
     }
 
-    // ================================================================
-    // STATS BAR — loads live counts from the database
-    // ================================================================
+    // Helper: builds placeholder HTML for the onerror fallback on images
+    // This runs if an image URL fails to load
+    function buildPlaceholder(icon) {
+        return `<div class="category-placeholder">
+                    <div class="placeholder-icon">${icon}</div>
+                    <div class="placeholder-text">Image Unavailable</div>
+                </div>`;
+    }
 
+    // ================================================================
+    // STATS BAR
+    // ================================================================
     function loadStats() {
-        // Load vehicle count
         fetch('/api/makes')
             .then(r => r.json())
             .then(() => {
-                // Count vehicles via a search for all
                 fetch('/api/categories')
                     .then(r => r.json())
                     .then(cats => {
-                        // Sum all part counts
                         const total = cats.reduce((sum, c) => sum + c.count, 0);
                         animateNumber('stat-parts', total);
                     });
             });
 
-        // Fetch vehicle count directly
         fetch('/api/makes')
             .then(r => r.json())
             .then(makes => {
-                // We'll show number of makes as a proxy, or we can do a proper count
-                // For now show makes count with a + indicator
-                animateNumber('stat-vehicles', makes.length * 150); // rough estimate
+                animateNumber('stat-vehicles', makes.length * 150);
             });
     }
 
-    // Animates a number counting up - makes the stats look dynamic
+    // Counts up from 0 to the target number with animation
     function animateNumber(elementId, target) {
-        const el       = document.getElementById(elementId);
-        const duration = 1500;  // milliseconds
-        const steps    = 40;
+        const el        = document.getElementById(elementId);
+        const duration  = 1500;
+        const steps     = 40;
         const increment = target / steps;
-        let current    = 0;
-        let step       = 0;
+        let current     = 0;
+        let step        = 0;
 
         const timer = setInterval(() => {
             step++;
@@ -1180,6 +1421,14 @@
             if (step >= steps) clearInterval(timer);
         }, duration / steps);
     }
+
+    // ---- Helper: reset a dropdown back to its default state -------
+    function resetDropdown(id, placeholder) {
+        const sel     = document.getElementById(id);
+        sel.innerHTML = `<option value="">${placeholder}</option>`;
+        sel.disabled  = true;
+    }
+
     </script>
 
 </body>

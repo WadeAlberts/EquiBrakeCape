@@ -46,3 +46,6 @@ python3 import_catalogue.py
 
 Second server to catch emails:
 python3 -m smtpd -n -c DebuggingServer localhost:1025
+
+Third server to reach payfast
+ngrok http 80
