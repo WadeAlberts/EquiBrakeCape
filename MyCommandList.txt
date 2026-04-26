@@ -27,7 +27,7 @@ Press CTRL+C to quit
 
 Command to push everything to my GitHub Repo:
 git add .
-git commit -m "Enter a comment here on what you last did"
+git commit -m "Push to ensure latest code is saved" #Enter a comment here on what you last did
 git push origin main
 
 
